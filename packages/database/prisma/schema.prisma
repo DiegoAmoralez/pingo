@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PlanCode {
+  FREE
+  PERSONAL
+  PRO
+  AGENCY
+}
+
+enum SubscriptionStatus {
+  NONE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}
+
+enum MonitorStatus {
+  UP
+  DOWN
+  UNKNOWN
+}
+
+enum CheckStatus {
+  UP
+  DOWN
+  UNKNOWN
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ErrorCategory {
+  DNS_ERROR
+  CONNECTION_REFUSED
+  CONNECTION_TIMEOUT
+  TLS_ERROR
+  HTTP_ERROR
+  REDIRECT_ERROR
+  SSRF_BLOCKED
+  UNKNOWN
+}
+
+enum NotificationType {
+  WEBSITE_DOWN
+  WEBSITE_RECOVERY
+  SSL_EXPIRY
+  DOMAIN_EXPIRY
+  DNS_CHANGED
+  NS_CHANGED
+  DOMAIN_CHANGED
+  TEST
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model User {
+  id              String    @id
+  name            String
+  email           String    @unique
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  image           String?
+  role            UserRole  @default(USER)
+  timezone        String    @default("UTC")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  subscription  Subscription?
+  monitors      Monitor[]
+  domains       Domain[]
+  telegram      TelegramConnection?
+  connectTokens TelegramConnectToken[]
+  notifications NotificationEvent[]
+  preferences   NotificationPreference?
+  analytics     AnalyticsEvent[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String             @unique
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider               String             @default("stripe")
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  plan                   PlanCode           @default(FREE)
+  status                 SubscriptionStatus @default(NONE)
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([plan, status])
+}
+
+model Monitor {
+  id                   String        @id @default(cuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId             String?
+  domain               Domain?       @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  name                 String
+  url                  String
+  hostname             String
+  rootDomain           String
+  displayHostname      String
+  status               MonitorStatus @default(UNKNOWN)
+  checkIntervalSeconds Int           @default(300)
+  timeoutSeconds       Int           @default(10)
+  expectedStatusCodes  String        @default("200-399")
+  followRedirects      Boolean       @default(true)
+  consecutiveFailures  Int           @default(0)
+  lastCheckedAt        DateTime?
+  lastSuccessfulAt     DateTime?
+  currentLatencyMs     Int?
+  currentHttpStatus    Int?
+  lastErrorType        ErrorCategory?
+  lastErrorMessage     String?
+  nextCheckAt          DateTime      @default(now())
+  nextSslCheckAt       DateTime      @default(now())
+  nextDnsCheckAt       DateTime      @default(now())
+  pausedAt             DateTime?
+  lastManualCheckAt    DateTime?
+  firstCheckProgress   Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  checks        MonitorCheck[]
+  incidents     Incident[]
+  sslRecords    SslRecord[]
+  dnsSnapshots  DnsSnapshot[]
+  notifications NotificationEvent[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([nextCheckAt])
+  @@index([nextSslCheckAt])
+  @@index([nextDnsCheckAt])
+  @@index([domainId])
+}
+
+model MonitorCheck {
+  id             String         @id @default(cuid())
+  monitorId      String
+  monitor        Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status         CheckStatus
+  httpStatus     Int?
+  latencyMs      Int?
+  errorType      ErrorCategory?
+  errorMessage   String?
+  redirectTarget String?
+  checkedAt      DateTime       @default(now())
+
+  @@index([monitorId, checkedAt])
+}
+
+model Incident {
+  id           String         @id @default(cuid())
+  monitorId    String
+  monitor      Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  startedAt    DateTime
+  endedAt      DateTime?
+  durationMs   Int?
+  reason       String?
+  firstFailure Json?
+  lastFailure  Json?
+  status       IncidentStatus @default(OPEN)
+  createdAt    DateTime       @default(now())
+
+  @@index([monitorId, startedAt])
+  @@index([status, startedAt])
+}
+
+model SslRecord {
+  id                 String    @id @default(cuid())
+  monitorId          String    @unique
+  monitor            Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  issuer             String?
+  validFrom          DateTime?
+  validUntil         DateTime?
+  fingerprint        String?
+  daysRemaining      Int?
+  lastAlertThreshold Int?
+  checkedAt          DateTime  @default(now())
+}
+
+model Domain {
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rootDomain         String
+  displayDomain      String
+  registrar          String?
+  registeredAt       DateTime?
+  expiresAt          DateTime?
+  updatedAtRegistry  DateTime?
+  status             String?
+  nameservers        String[]  @default([])
+  rdapSource         String?
+  lastCheckedAt      DateTime?
+  nextCheckAt        DateTime  @default(now())
+  lastAlertThreshold Int?
+  lastError          String?
+  provider           String    @default("rdap")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  monitors Monitor[]
+  events   DomainEvent[]
+
+  @@unique([userId, rootDomain])
+  @@index([rootDomain])
+  @@index([nextCheckAt])
+}
+
+model DnsSnapshot {
+  id        String   @id @default(cuid())
+  monitorId String
+  monitor   Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  records   Json
+  createdAt DateTime @default(now())
+
+  @@index([monitorId, createdAt])
+}
+
+model DomainEvent {
+  id        String   @id @default(cuid())
+  domainId  String
+  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([domainId, createdAt])
+}
+
+model TelegramConnection {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramUserId String
+  telegramChatId String
+  username       String?
+  connectedAt    DateTime @default(now())
+
+  @@index([telegramUserId])
+  @@index([telegramChatId])
+}
+
+model TelegramConnectToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model NotificationEvent {
+  id               String                      @id @default(cuid())
+  userId           String
+  user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorId        String?
+  monitor          Monitor?                    @relation(fields: [monitorId], references: [id], onDelete: SetNull)
+  type             NotificationType
+  status           NotificationDeliveryStatus  @default(QUEUED)
+  payload          Json
+  sentAt           DateTime?
+  createdAt        DateTime                    @default(now())
+  deduplicationKey String                      @unique
+
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  websiteDowntime  Boolean @default(true)
+  websiteRecovery  Boolean @default(true)
+  sslExpiration    Boolean @default(true)
+  domainExpiration Boolean @default(true)
+  dnsChanges       Boolean @default(true)
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  properties Json?
+  createdAt  DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId])
+}
+
+model WorkerHeartbeat {
+  id        String   @id @default("primary")
+  updatedAt DateTime @updatedAt
+  meta      Json?
+}
+
+model StripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+model StatusPage {
+  id        String   @id @default(cuid())
+  userId    String
+  slug      String   @unique
+  title     String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}

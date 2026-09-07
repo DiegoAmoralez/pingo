@@ -1,0 +1,32 @@
+FROM node:22-alpine AS deps
+RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/monitoring/package.json packages/monitoring/package.json
+COPY packages/notifications/package.json packages/notifications/package.json
+COPY packages/billing/package.json packages/billing/package.json
+COPY packages/email/package.json packages/email/package.json
+RUN pnpm install --frozen-lockfile
+
+FROM node:22-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm --filter @pingo/database generate
+RUN pnpm --filter @pingo/worker build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 pingo
+COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
+COPY --from=builder /app/apps/worker/package.json ./apps/worker/package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+USER pingo
+CMD ["node", "apps/worker/dist/index.js"]

@@ -1,0 +1,39 @@
+FROM node:22-alpine AS deps
+RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/monitoring/package.json packages/monitoring/package.json
+COPY packages/notifications/package.json packages/notifications/package.json
+COPY packages/billing/package.json packages/billing/package.json
+COPY packages/email/package.json packages/email/package.json
+RUN pnpm install --frozen-lockfile
+
+FROM node:22-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages ./packages
+COPY . .
+RUN pnpm --filter @pingo/database generate
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN pnpm --filter @pingo/web build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+CMD ["node", "apps/web/server.js"]

@@ -1,0 +1,33 @@
+{
+  "name": "pingo",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "PINGO — website, SSL, DNS and domain monitoring with Telegram alerts",
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "db:generate": "pnpm --filter @pingo/database generate",
+    "db:migrate": "pnpm --filter @pingo/database migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @pingo/database migrate:deploy",
+    "db:seed": "pnpm --filter @pingo/database seed",
+    "db:studio": "pnpm --filter @pingo/database studio",
+    "stripe:setup": "pnpm --filter @pingo/billing setup-demo",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.26.0",
+    "@next/eslint-plugin-next": "^15.3.2",
+    "eslint": "^9.26.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.0"
+  }
+}

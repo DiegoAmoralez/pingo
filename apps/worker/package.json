@@ -1,0 +1,33 @@
+{
+  "name": "@pingo/worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --target node22 --clean --external @prisma/client --external ioredis --external bullmq --external grammy",
+    "start": "node dist/index.js",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pingo/billing": "workspace:*",
+    "@pingo/database": "workspace:*",
+    "@pingo/email": "workspace:*",
+    "@pingo/monitoring": "workspace:*",
+    "@pingo/notifications": "workspace:*",
+    "@pingo/shared": "workspace:*",
+    "bullmq": "^5.52.2",
+    "dotenv": "^16.5.0",
+    "grammy": "^1.36.1",
+    "ioredis": "^5.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  }
+}
