@@ -42,9 +42,8 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-# Prisma engines (pnpm layout) — needed when tracing misses alpine binaries.
+# Prisma engines live under the pnpm virtual store (no top-level node_modules/@prisma).
 COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

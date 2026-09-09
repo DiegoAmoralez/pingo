@@ -33,8 +33,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 pingo
 COPY --from=builder --chown=pingo:nodejs /deploy ./
 COPY --from=builder --chown=pingo:nodejs /app/apps/worker/dist ./dist
-# Ensure generated Prisma client + musl engine are present in the deploy tree.
+# Prisma engines live under the pnpm virtual store (no top-level node_modules/@prisma).
 COPY --from=builder --chown=pingo:nodejs /app/node_modules/.pnpm ./node_modules/.pnpm
-COPY --from=builder --chown=pingo:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER pingo
 CMD ["node", "dist/index.js"]
