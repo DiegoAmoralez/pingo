@@ -25,9 +25,10 @@ RUN pnpm --filter @pingo/database generate
 RUN pnpm --filter @pingo/worker build
 # Isolated production tree with only runtime deps (@prisma/client, bullmq, …).
 RUN pnpm --filter @pingo/worker deploy --prod --legacy /deploy
-# pnpm deploy may miss the generated client/engine; copy them from the monorepo store.
+# pnpm deploy may leave a broken @prisma/client symlink; replace with generated client+engine.
 RUN set -eux; \
   CLIENT_ROOT="$(ls -d /app/node_modules/.pnpm/@prisma+client@*/node_modules | head -n 1)"; \
+  rm -rf /deploy/node_modules/@prisma /deploy/node_modules/.prisma; \
   mkdir -p /deploy/node_modules; \
   cp -a "${CLIENT_ROOT}/@prisma" /deploy/node_modules/; \
   cp -a "${CLIENT_ROOT}/.prisma" /deploy/node_modules/
