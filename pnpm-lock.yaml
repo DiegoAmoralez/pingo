@@ -159,6 +159,9 @@ importers:
       '@pingo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@prisma/client':
+        specifier: ^6.8.2
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       bullmq:
         specifier: ^5.52.2
         version: 5.81.4(supports-color@7.2.0)
