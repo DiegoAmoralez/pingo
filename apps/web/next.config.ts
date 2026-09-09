@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
   },
+  // Ensure Prisma query engines are traced into the standalone output for Alpine.
+  outputFileTracingIncludes: {
+    '/*': [
+      '../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**/*',
+      '../../node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client/**/*',
+      '../../packages/database/node_modules/.prisma/client/**/*',
+    ],
+  },
   transpilePackages: [
     '@pingo/database',
     '@pingo/shared',

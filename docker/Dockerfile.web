@@ -1,4 +1,5 @@
 FROM node:22-alpine AS deps
+RUN apk add --no-cache libc6-compat openssl
 RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
@@ -13,6 +14,7 @@ COPY packages/email/package.json packages/email/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS builder
+RUN apk add --no-cache libc6-compat openssl
 RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -22,9 +24,17 @@ COPY . .
 RUN pnpm --filter @pingo/database generate
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Placeholders for build-time auth init; runtime overrides these via Railway.
+ENV BETTER_AUTH_SECRET=build-time-placeholder-min-32-chars-long
+ENV BETTER_AUTH_URL=http://localhost:3000
+ENV APP_URL=http://localhost:3000
+ENV APP_SECRET=build-time-placeholder-min-32-chars-long
+ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
+ENV REDIS_URL=redis://localhost:6379
 RUN pnpm --filter @pingo/web build
 
 FROM node:22-alpine AS runner
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -32,6 +42,9 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+# Prisma engines (pnpm layout) — needed when tracing misses alpine binaries.
+COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

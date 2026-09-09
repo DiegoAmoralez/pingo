@@ -1,4 +1,5 @@
 FROM node:22-alpine AS deps
+RUN apk add --no-cache libc6-compat openssl
 RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
@@ -13,20 +14,27 @@ COPY packages/email/package.json packages/email/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS builder
+RUN apk add --no-cache libc6-compat openssl
 RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=deps /app/packages ./packages
 COPY . .
 RUN pnpm --filter @pingo/database generate
 RUN pnpm --filter @pingo/worker build
+# Isolated production tree with only runtime deps (@prisma/client, bullmq, …).
+RUN pnpm --filter @pingo/worker deploy --prod --legacy /deploy
 
 FROM node:22-alpine AS runner
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 pingo
-COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
-COPY --from=builder /app/apps/worker/package.json ./apps/worker/package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
+COPY --from=builder --chown=pingo:nodejs /deploy ./
+COPY --from=builder --chown=pingo:nodejs /app/apps/worker/dist ./dist
+# Ensure generated Prisma client + musl engine are present in the deploy tree.
+COPY --from=builder --chown=pingo:nodejs /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=builder --chown=pingo:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER pingo
-CMD ["node", "apps/worker/dist/index.js"]
+CMD ["node", "dist/index.js"]
