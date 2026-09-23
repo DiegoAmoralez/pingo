@@ -1,5 +1,5 @@
 import { logger } from '@pingo/shared';
-import { getPingoBot, startPingoPolling } from '@pingo/telegram-bot';
+import { getPingoBot, registerBotCommands, startPingoPolling } from '@pingo/telegram-bot';
 
 /**
  * Runs the PingoGo Telegram bot inside the worker.
@@ -24,6 +24,11 @@ export async function startTelegramRuntime() {
     return;
   }
 
+  // Webhook mode never calls startPingoPolling, so register commands and the
+  // Mini App menu button here; otherwise production would keep stale settings.
+  await registerBotCommands(bot).catch((error) =>
+    logger.warn({ err: error }, 'could not register telegram commands'),
+  );
   logger.info('telegram bot uses webhook mode; polling skipped');
 }
 
