@@ -1,14 +1,24 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google';
+import { Caveat, Manrope } from 'next/font/google';
 import { getSiteUrl } from '@/lib/site-url';
 import { getLocale } from '@/lib/i18n-server';
 import { pick } from '@/lib/i18n';
 import { LocaleProvider } from '@/components/locale-provider';
 import './globals.css';
 
-const geist = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist',
+const manrope = Manrope({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-manrope',
+  display: 'swap',
+});
+
+// Handwritten annotations on the landing "sticker board".
+const caveat = Caveat({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['500', '600'],
+  variable: '--font-hand',
+  display: 'swap',
 });
 
 const appUrl = getSiteUrl();
@@ -118,7 +128,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang={locale} className={geist.variable}>
+    <html lang={locale} className={`${manrope.variable} ${caveat.variable}`}>
       <body className="antialiased">
         <script
           type="application/ld+json"

@@ -1,18 +1,19 @@
 import Link from 'next/link';
 import {
-  BellRing,
+  Activity,
+  ArrowRight,
   CalendarDays,
-  Check,
   Clock3,
   Globe2,
   LockKeyhole,
   Play,
   Send,
-  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SiteFooter, SiteHeader } from '@/components/site-chrome';
-import { PricingCard } from '@/components/pricing-card';
+import { MobileStickerBoard, StickerBoard } from '@/components/landing/sticker-board';
+import { CtaBanner } from '@/components/landing/cta-banner';
+import { Reveal } from '@/components/landing/reveal';
 import { getSession } from '@/lib/session';
 import { getLocale } from '@/lib/i18n-server';
 import { pick } from '@/lib/i18n';
@@ -20,219 +21,258 @@ import { pick } from '@/lib/i18n';
 export default async function LandingPage() {
   const [session, locale] = await Promise.all([getSession(), getLocale()]);
   const t = (en: string, ru: string) => pick(locale, en, ru);
+
   const trustItems: Array<[LucideIcon, string]> = [
     [Clock3, t('24/7 uptime', 'Доступность 24/7')],
     [Globe2, t('Domain expiry', 'Срок домена')],
     [LockKeyhole, t('SSL certificates', 'SSL-сертификаты')],
     [Send, t('Telegram alerts', 'Уведомления в Telegram')],
   ];
-  const featureItems: Array<[LucideIcon, string, string]> = [
-    [BellRing, t('Your site stays watched', 'Сайт всегда под наблюдением'), t('Checks run automatically. If a site becomes unavailable, Telegram knows first.', 'Проверки идут автоматически. Если сайт станет недоступен, вы сразу узнаете об этом в Telegram.')],
-    [CalendarDays, t('Your domain never slips', 'Домен не потеряется'), t('We watch registration dates and remind you before the domain expires.', 'Следим за датой регистрации и заранее напоминаем о продлении домена.')],
-    [ShieldCheck, t('SSL without surprises', 'SSL без сюрпризов'), t('Certificate health and expiration are tracked long before browsers show warnings.', 'Контролируем сертификат и предупреждаем задолго до ошибок в браузере.')],
+
+  const mobileTrust: Array<[LucideIcon, string, string]> = [
+    [Clock3, t('Uptime', 'Доступность'), t('Round-the-clock monitoring', 'Круглосуточный мониторинг')],
+    [Globe2, t('Domains', 'Домены'), t('We track renewal dates', 'Следим за сроками регистрации')],
+    [LockKeyhole, 'SSL', t('We watch certificate expiry', 'Контролируем срок действия')],
   ];
+
+  const steps: Array<[string, string, string]> = [
+    ['1', t('Add your site', 'Добавьте сайт'), t('Enter the address and we start monitoring right away.', 'Укажите адрес сайта, и мы сразу начнём мониторинг.')],
+    ['2', t('Connect Telegram', 'Подключите Telegram'), t('Link your Telegram in a couple of clicks. It is secure.', 'В пару кликов свяжите свой Telegram — это безопасно.')],
+    ['3', t('Get notified', 'Получайте уведомления'), t('We message you in Telegram when something breaks — and again when everything is back to normal.', 'Мы напишем в Telegram, если что-то пойдет не так. И когда всё снова будет в порядке.')],
+  ];
+
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-x-clip">
       <SiteHeader signedIn={Boolean(session?.user)} />
+
       <main>
-        <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-8 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:pt-14">
-          <div className="relative z-10">
-            <p className="inline-flex items-center gap-2 rounded-full bg-soft-lime px-4 py-2 text-xs font-semibold text-accent">
-              {t('Website monitoring · Telegram', 'Мониторинг сайтов · Telegram')}
+        {/* Hero ---------------------------------------------------------------- */}
+        <section className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-12 pt-6 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-6 lg:pb-16 lg:pt-10">
+          <div className="relative z-10 max-w-xl">
+            <p className="inline-flex items-center gap-2 rounded-full bg-soft-lime px-4 py-2 text-xs font-bold text-accent">
+              {t('Website monitoring', 'Мониторинг сайтов')}
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              Telegram
             </p>
-            <h1 className="text-balance mt-6 max-w-2xl text-5xl font-extrabold leading-[0.98] tracking-[-0.05em] sm:text-6xl lg:text-[4.7rem]">
-              {t('Site went down? PingoGo already told you.', 'Сайт упал? PingoGo уже пишет вам.')}
+            <h1 className="text-balance mt-6 text-[2.75rem] font-extrabold leading-[1] tracking-[-0.045em] sm:text-6xl lg:text-[4.4rem]">
+              {t('Site down? PingoGo is already texting you.', 'Сайт упал? PingoGo уже пишет вам.')}
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-muted">
+            <p className="mt-6 max-w-md text-[17px] leading-7 text-foreground/75">
               {t(
-                'Uptime, SSL, DNS and domain expiry—watched around the clock. Useful alerts arrive in Telegram before customers start writing.',
-                'Доступность, SSL, DNS и срок домена — под круглосуточным контролем. Полезные уведомления приходят в Telegram раньше, чем напишут клиенты.',
+                'Watches your site uptime, SSL and domain expiry. Reports problems straight to Telegram.',
+                'Следит за доступностью сайта, SSL и сроком домена. Сообщает о проблемах прямо в Telegram.',
               )}
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/register"
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-accent px-6 text-base font-semibold text-white shadow-lg shadow-emerald-900/10 hover:-translate-y-0.5 hover:bg-[#00765f]"
-              >
-                {t('Connect your site', 'Подключить сайт')}
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link href="/register" className="lp-btn lp-btn-primary">
+                {t('Connect a site', 'Подключить сайт')}
+                <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
-              <Link
-                href="#how"
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-accent bg-white px-6 text-base font-semibold text-accent"
-              >
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-white">
-                  <Play className="h-3 w-3 fill-current" />
+              <Link href="#how" className="lp-btn lp-btn-outline">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-white" aria-hidden>
+                  <Play className="ml-0.5 h-3 w-3 fill-current" />
                 </span>
-                {t('See how it works', 'Как это работает')}
+                {t('Watch the demo', 'Посмотреть демо')}
               </Link>
             </div>
-            <p className="mt-4 text-xs text-muted">{t('No credit card · No installation · Setup in 60 seconds', 'Без карты · Без установки · Настройка за 60 секунд')}</p>
+            <p className="mt-3 text-xs text-muted">{t('Nothing to install on your site', 'Без установки на сайт')}</p>
           </div>
 
-          <div className="relative min-h-[520px]">
-            <div className="absolute -inset-8 rounded-[4rem] bg-lime/35 blur-3xl" />
-            <div className="brand-grid brand-card relative rounded-[2.4rem] bg-[#efffd8] p-4 sm:p-8">
-              <div className="brand-card rounded-[1.8rem] bg-white p-5 sm:p-7">
-                <div className="mb-6 flex items-center justify-between">
-                  <p className="text-lg font-bold">{t('Your websites', 'Ваши сайты')}</p>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-soft-lime px-3 py-1.5 text-xs font-semibold text-accent">
-                    <span className="h-2 w-2 rounded-full bg-ok" /> {t('All operational', 'Всё работает')}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  <MonitorPreview name="example.com" uptime="99.98%" />
-                  <MonitorPreview name="shop.example" uptime="99.95%" warning={t('SSL · 12 days', 'SSL · 12 дней')} />
-                  <MonitorPreview name="studio.example" uptime="100%" />
-                </div>
-              </div>
-              <div className="brand-card relative -mt-2 ml-auto mr-3 max-w-sm translate-y-8 rounded-3xl bg-white p-5 sm:mr-8">
-                <div className="flex items-start gap-4">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#2aabee] text-white">
-                    <Send className="h-6 w-6 fill-current" />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center justify-between gap-6">
-                      <p className="font-bold">PingoGo</p>
-                      <span className="text-xs text-muted">14:32</span>
-                    </div>
-                    <p className="mt-2 font-semibold text-crit">● {t('Website unavailable', 'Сайт недоступен')}</p>
-                    <p className="mt-1 text-sm text-muted">shop.example · {t('HTTP 502', 'Ошибка 502')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="hidden lg:block">
+            <StickerBoard t={t} />
+          </div>
+          <div className="lg:hidden">
+            <MobileStickerBoard t={t} />
           </div>
         </section>
 
-        <section className="border-y border-border bg-white/60">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-0 px-5 sm:px-8 md:grid-cols-4">
+        {/* Trust strip ---------------------------------------------------------- */}
+        <section className="mx-auto max-w-7xl px-5 sm:px-8" aria-label={t('What we monitor', 'Что мы контролируем')}>
+          <div className="lp-card hidden grid-cols-4 divide-x divide-border !rounded-[20px] md:grid">
             {trustItems.map(([Icon, label]) => (
-              <div key={label} className="flex items-center justify-center gap-3 border-border px-3 py-6 text-sm font-semibold md:border-r md:last:border-0">
-                <Icon className="h-5 w-5 text-accent" /> {label}
+              <div key={label} className="flex items-center justify-center gap-3 px-4 py-5 text-[15px] font-semibold">
+                <Icon className="h-5 w-5 text-accent" aria-hidden /> {label}
               </div>
             ))}
           </div>
-        </section>
 
-        <section id="features" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-accent">{t('Everything that matters', 'Всё самое важное')}</p>
-            <h2 className="text-balance mt-3 text-4xl font-extrabold tracking-[-0.04em] sm:text-5xl">
-              {t('Three reasons to stop checking manually.', 'Три причины больше не проверять вручную.')}
-            </h2>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {featureItems.map(([Icon, title, copy]) => (
-              <div key={title} className="brand-card group rounded-[1.75rem] p-6">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-soft-lime text-accent">
-                  <Icon className="h-6 w-6" />
-                </span>
-                <h3 className="mt-6 text-xl font-bold">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-muted">{copy}</p>
-                <div className="mt-8 rounded-2xl border border-border bg-background p-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-semibold">example.com</span>
-                    <span className="text-xs font-bold text-ok">99.98%</span>
-                  </div>
-                  <div className="status-bars mt-4">{Array.from({ length: 10 }).map((_, i) => <span key={i} />)}</div>
+          <div className="md:hidden">
+            <h2 className="text-2xl font-extrabold tracking-tight">{t('Peace of mind for your site', 'Спокойствие за ваш сайт')}</h2>
+            <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+              {mobileTrust.map(([Icon, title, caption]) => (
+                <div key={title} className="flex flex-col items-center">
+                  <span className="lp-icon">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <p className="mt-2.5 text-sm font-bold">{title}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted">{caption}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="how" className="mx-auto max-w-7xl px-5 pb-24 sm:px-8">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-accent">{t('How it works', 'Как это работает')}</p>
-            <h2 className="text-balance mt-3 text-4xl font-extrabold tracking-[-0.04em] sm:text-5xl">
-              {t('From a URL to peace of mind in three clear steps.', 'От ссылки до спокойствия — три понятных шага.')}
-            </h2>
-            <p className="mt-5 text-lg leading-8 text-muted">
-              {t(
-                'No code, agents or complicated dashboards. PingoGo starts collecting the signals that matter as soon as you add a website.',
-                'Никакого кода, агентов и сложной настройки. PingoGo начинает собирать важные сигналы сразу после добавления сайта.',
-              )}
-            </p>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {[
-              ['1', t('Add your website', 'Добавьте сайт'), t('Paste an HTTPS address. We validate it and launch uptime, SSL, DNS and domain checks immediately.', 'Укажите HTTPS-адрес. Мы проверим его и сразу запустим проверку доступности, SSL, DNS и домена.'), t('First result usually appears in under a minute.', 'Первый результат обычно появляется меньше чем за минуту.')],
-              ['2', t('Connect Telegram', 'Подключите Telegram'), t('Open a secure one-time link and press Start in the bot. Your account and chat connect automatically.', 'Откройте защищённую одноразовую ссылку и нажмите Start в боте. Аккаунт и чат свяжутся автоматически.'), t('Send a test notification at any time.', 'Тестовое уведомление можно отправить в любой момент.')],
-              ['3', t('Let PingoGo watch', 'Доверьте контроль PingoGo'), t('We confirm failures, open an incident and notify you. After recovery, you get the response code and downtime duration.', 'Мы подтверждаем сбой, создаём инцидент и уведомляем вас. После восстановления присылаем код ответа и длительность простоя.'), t('No duplicate noise—only important events.', 'Без повторяющегося шума — только важные события.')],
-            ].map(([number, title, copy, note]) => (
-              <div key={number} className="brand-card relative rounded-3xl p-6">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-lime text-lg font-extrabold">{number}</span>
-                <div>
-                  <h3 className="mt-5 text-xl font-bold">{title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-muted">{copy}</p>
-                  <p className="mt-5 border-t border-border pt-4 text-xs font-semibold leading-5 text-accent">{note}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-          <div className="text-center">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-accent">{t('Clear pricing', 'Понятные тарифы')}</p>
-            <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.04em]">{t('Start free. Scale when you need.', 'Начните бесплатно. Растите по мере необходимости.')}</h2>
-          </div>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <PricingCard code="FREE" ctaHref="/register" ctaLabel={t('Start free', 'Начать бесплатно')} />
-            <PricingCard code="PERSONAL" ctaHref="/register" ctaLabel={t('Upgrade', 'Выбрать')} />
-            <PricingCard code="PRO" ctaHref="/register" ctaLabel={t('Upgrade', 'Выбрать')} />
-            <PricingCard code="AGENCY" ctaHref="/register" ctaLabel={t('Upgrade', 'Выбрать')} />
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-4xl px-5 py-20 sm:px-8">
-          <h2 className="text-center text-4xl font-extrabold tracking-[-0.04em]">{t('Questions, answered.', 'Ответы на вопросы.')}</h2>
-          <div className="mt-10 divide-y divide-border rounded-3xl border border-border bg-white px-6">
-            {[
-              [t('Can I start without a credit card?', 'Можно начать без банковской карты?'), t('Yes. The Free plan watches two websites and includes Telegram alerts.', 'Да. Бесплатный тариф отслеживает два сайта и включает уведомления в Telegram.')],
-              [t('How fast are checks?', 'Как часто выполняются проверки?'), t('Every 5 minutes on Free, every minute on paid plans.', 'Каждые 5 минут на бесплатном тарифе и каждую минуту на платных.')],
-              [t('Will I get duplicate notifications?', 'Будут ли повторяющиеся уведомления?'), t('No. We confirm failures before opening an incident and suppress duplicate alerts.', 'Нет. Мы подтверждаем сбой перед созданием инцидента и подавляем дубликаты.')],
-              [t('Is PingoGo difficult to install?', 'Нужно ли устанавливать PingoGo?'), t('There is nothing to install on your website. Add a URL and monitoring starts.', 'На сайт ничего устанавливать не нужно. Добавьте URL — мониторинг начнётся автоматически.')],
-            ].map(([q, a]) => (
-              <details key={q} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between font-bold">
-                  {q}<span className="text-xl text-accent group-open:rotate-45">+</span>
-                </summary>
-                <p className="max-w-2xl pt-3 text-sm leading-6 text-muted">{a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-5 pb-8 sm:px-8">
-          <div className="relative overflow-hidden rounded-[2rem] bg-navy px-7 py-12 text-white sm:px-12">
-            <div className="relative z-10 max-w-2xl">
-              <h2 className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">{t('You run the business. PingoGo watches the website.', 'Вы занимаетесь бизнесом. PingoGo следит за сайтом.')}</h2>
-              <p className="mt-3 text-sm text-white/65">{t('Less worrying. More time for work that moves you forward.', 'Меньше переживаний. Больше времени на действительно важные задачи.')}</p>
-              <Link href="/register" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-lime px-5 py-3 font-bold text-navy hover:-translate-y-0.5">
-                {t('Start monitoring free', 'Начать бесплатно')}
-              </Link>
+              ))}
             </div>
-            <div className="absolute -bottom-20 right-10 h-52 w-52 rounded-full bg-accent/50 blur-2xl" />
           </div>
         </section>
+
+        {/* Features ------------------------------------------------------------- */}
+        <section id="features" className="mx-auto max-w-7xl scroll-mt-24 px-5 pt-20 sm:px-8 lg:pt-24">
+          <Reveal>
+            <h2 className="text-balance text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl lg:text-[2.6rem]">
+              {t('Three reasons to stop checking by hand.', 'Три причины больше не проверять вручную.')}
+            </h2>
+          </Reveal>
+
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            <Reveal delay={0}>
+              <FeatureCard
+                icon={Activity}
+                title={t('Your site, watched', 'Сайт под наблюдением')}
+                copy={t(
+                  'We check availability from several regions. If the site goes down, you know in Telegram right away.',
+                  'Проверяем доступность из разных регионов. Если сайт недоступен — вы сразу узнаете в Telegram.',
+                )}
+              >
+                <div className="flex items-center justify-between text-sm">
+                  <span className="inline-flex items-center gap-2 font-bold">
+                    <span className="h-2.5 w-2.5 rounded-full bg-ok" aria-hidden /> example.ru
+                  </span>
+                  <span className="font-bold tabular-nums">99.98%</span>
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div className="status-bars">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <span key={i} />
+                    ))}
+                  </div>
+                  <span className="text-right text-[11px] leading-3.5 text-muted">
+                    {t('Online', 'Сейчас')}
+                    <br />
+                    {t('now', 'в сети')}
+                  </span>
+                </div>
+              </FeatureCard>
+            </Reveal>
+
+            <Reveal delay={80}>
+              <FeatureCard
+                icon={Globe2}
+                title={t('Your domain stays yours', 'Домен не потеряется')}
+                copy={t(
+                  'We track the domain registration date and remind you in advance, so you never lose the site.',
+                  'Следим за сроком регистрации домена. Напомним заранее, чтобы вы не потеряли сайт.',
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft-lime text-accent" aria-hidden>
+                    <CalendarDays className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">example.ru</p>
+                    <p className="text-xs text-muted">{t('Domain active', 'Домен активен')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] text-muted">{t('Expires in', 'Истекает через')}</p>
+                    <p className="text-xl font-extrabold leading-none tabular-nums">{t('32 days', '32 дня')}</p>
+                  </div>
+                </div>
+              </FeatureCard>
+            </Reveal>
+
+            <Reveal delay={160}>
+              <FeatureCard
+                icon={LockKeyhole}
+                title={t('SSL without surprises', 'SSL без сюрпризов')}
+                copy={t(
+                  'We watch the SSL certificate expiry and warn you when it is time to renew.',
+                  'Контролируем срок действия SSL-сертификата. Предупредим, когда пора продлить.',
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft-lime text-accent" aria-hidden>
+                    <LockKeyhole className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">shop.example</p>
+                    <p className="text-xs text-muted">{t('SSL certificate', 'SSL-сертификат')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] text-muted">{t('Remaining', 'Осталось')}</p>
+                    <p className="text-xl font-extrabold leading-none text-[#e08a00] tabular-nums">{t('12 days', '12 дней')}</p>
+                  </div>
+                </div>
+              </FeatureCard>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* How it works --------------------------------------------------------- */}
+        <section id="how" className="mx-auto max-w-7xl scroll-mt-24 px-5 pt-20 sm:px-8 lg:pt-24">
+          <Reveal>
+            <h2 className="text-balance text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl lg:text-[2.6rem]">
+              {t('From a link to peace of mind — three steps.', 'От ссылки до спокойствия — три шага.')}
+            </h2>
+          </Reveal>
+
+          <ol className="mt-10 grid gap-8 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-start md:gap-4">
+            {steps.map(([number, title, copy], index) => (
+              <StepItem key={number} number={number} title={title} copy={copy} last={index === steps.length - 1} delay={index * 80} />
+            ))}
+          </ol>
+        </section>
+
+        {/* CTA ------------------------------------------------------------------ */}
+        <div className="pt-20 lg:pt-24">
+          <Reveal>
+            <CtaBanner t={t} />
+          </Reveal>
+        </div>
       </main>
+
       <SiteFooter />
     </div>
   );
 }
 
-function MonitorPreview({ name, uptime, warning }: { name: string; uptime: string; warning?: string }) {
+function FeatureCard({
+  icon: Icon,
+  title,
+  copy,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  copy: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-white px-4 py-4 shadow-sm">
-      <span className="h-3 w-3 shrink-0 rounded-full bg-ok ring-4 ring-emerald-50" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold">{name}</p>
-        <p className="truncate text-xs text-muted">https://{name}</p>
+    <article className="lp-card flex h-full flex-col p-6 sm:p-7">
+      <div className="flex items-center gap-3.5">
+        <span className="lp-icon">
+          <Icon className="h-5 w-5" aria-hidden />
+        </span>
+        <h3 className="text-lg font-extrabold tracking-tight">{title}</h3>
       </div>
-      <p className="hidden text-xs font-bold sm:block">{uptime}</p>
-      <div className="status-bars hidden sm:flex">{Array.from({ length: 7 }).map((_, i) => <span key={i} />)}</div>
-      {warning ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-warn">{warning}</span> : <Check className="h-4 w-4 text-ok" />}
-    </div>
+      <p className="mt-4 flex-1 text-[15px] leading-6 text-foreground/75">{copy}</p>
+      <div className="lp-widget mt-6 p-4">{children}</div>
+    </article>
+  );
+}
+
+function StepItem({ number, title, copy, last, delay }: { number: string; title: string; copy: string; last: boolean; delay: number }) {
+  return (
+    <>
+      <li>
+        <Reveal delay={delay} className="flex gap-4">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft-lime text-lg font-extrabold text-foreground">{number}</span>
+          <div>
+            <h3 className="text-lg font-extrabold tracking-tight">{title}</h3>
+            <p className="mt-2 text-[15px] leading-6 text-foreground/75">{copy}</p>
+          </div>
+        </Reveal>
+      </li>
+      {!last ? (
+        <li aria-hidden className="hidden pt-3 text-muted/70 md:block">
+          <ArrowRight className="h-5 w-5" />
+        </li>
+      ) : null}
+    </>
   );
 }
