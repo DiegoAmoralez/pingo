@@ -4,6 +4,7 @@ import { getRedis } from '@pingo/shared/redis';
 import { prisma } from '@pingo/database';
 import { auth } from './auth';
 import { bearerToken, verifyWebAppToken } from './telegram-webapp';
+import { isMaintenanceEnabled } from './maintenance';
 import { ZodError } from 'zod';
 
 export type ApiUser = { id: string; email: string; name: string };
@@ -13,6 +14,12 @@ export type ApiUser = { id: string; email: string; name: string };
  * Telegram Mini App token passed as `Authorization: Bearer`.
  */
 export async function getApiUser(request: Request): Promise<ApiUser> {
+  // While maintenance is on, the site is closed for everyone, including API
+  // clients (dashboard fetches, Telegram Mini App). Health/webhooks do not use this.
+  if (await isMaintenanceEnabled()) {
+    throw new AppError('Site is under maintenance', 'MAINTENANCE', 503);
+  }
+
   const session = await auth.api.getSession({ headers: request.headers });
   if (session?.user) {
     return { id: session.user.id, email: session.user.email, name: session.user.name };

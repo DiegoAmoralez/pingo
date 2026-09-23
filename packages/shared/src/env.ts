@@ -22,6 +22,8 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
   ADMIN_EMAIL: z.string().optional().default(''),
+  ADMIN_PANEL_LOGIN: z.string().optional().default(''),
+  ADMIN_PANEL_PASSWORD: z.string().optional().default(''),
   MOCK_MONITORING: z
     .string()
     .optional()

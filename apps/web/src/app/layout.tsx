@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
+import { headers } from 'next/headers';
 import { getSiteUrl } from '@/lib/site-url';
 import { getLocale } from '@/lib/i18n-server';
 import { pick } from '@/lib/i18n';
+import { isMaintenanceEnabled, isMaintenanceExempt } from '@/lib/maintenance';
 import { LocaleProvider } from '@/components/locale-provider';
+import { MaintenanceScreen } from '@/components/maintenance-screen';
 import './globals.css';
 
 // Fonts are self-hosted (variable woff2, latin + cyrillic) so the production
@@ -81,7 +84,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale();
+  const [locale, requestHeaders] = await Promise.all([getLocale(), headers()]);
+  // Maintenance mode replaces every page except the admin panel (set from /admin).
+  const pathname = requestHeaders.get('x-pathname') ?? '';
+  const maintenance = !isMaintenanceExempt(pathname) && (await isMaintenanceEnabled());
   const description = pick(
     locale,
     'Website, SSL, DNS and domain monitoring with Telegram alerts.',
@@ -136,7 +142,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-        <LocaleProvider locale={locale}>{children}</LocaleProvider>
+        <LocaleProvider locale={locale}>
+          {maintenance ? <MaintenanceScreen locale={locale} /> : children}
+        </LocaleProvider>
       </body>
     </html>
   );
