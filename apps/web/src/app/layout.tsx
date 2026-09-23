@@ -1,22 +1,24 @@
 import type { Metadata } from 'next';
-import { Caveat, Manrope } from 'next/font/google';
+import localFont from 'next/font/local';
 import { getSiteUrl } from '@/lib/site-url';
 import { getLocale } from '@/lib/i18n-server';
 import { pick } from '@/lib/i18n';
 import { LocaleProvider } from '@/components/locale-provider';
 import './globals.css';
 
-const manrope = Manrope({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['500', '600', '700', '800'],
+// Fonts are self-hosted (variable woff2, latin + cyrillic) so the production
+// build does not depend on fonts.googleapis.com being reachable from the builder.
+const manrope = localFont({
+  src: './fonts/manrope-variable.woff2',
+  weight: '200 800',
   variable: '--font-manrope',
   display: 'swap',
 });
 
 // Handwritten annotations on the landing "sticker board".
-const caveat = Caveat({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['500', '600'],
+const caveat = localFont({
+  src: './fonts/caveat-variable.woff2',
+  weight: '400 700',
   variable: '--font-hand',
   display: 'swap',
 });
