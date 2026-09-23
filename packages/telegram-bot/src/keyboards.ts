@@ -8,6 +8,33 @@ export function appUrl(path = ''): string {
   return `${base}${path}`;
 }
 
+/**
+ * Telegram rejects inline URL buttons that point to localhost / private hosts
+ * ("Wrong HTTP URL"). Returns null in that case so screens can skip the button.
+ */
+export function publicAppUrl(path = ''): string | null {
+  const url = appUrl(path);
+  try {
+    const { hostname, protocol } = new URL(url);
+    if (protocol !== 'http:' && protocol !== 'https:') return null;
+    const isLocal =
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.0\.0\.0|\[?::1)/.test(hostname);
+    return isLocal ? null : url;
+  } catch {
+    return null;
+  }
+}
+
+function urlButton(keyboard: InlineKeyboard, label: string, path: string): boolean {
+  const url = publicAppUrl(path);
+  if (!url) return false;
+  keyboard.url(label, url);
+  return true;
+}
+
 export function mainMenuKeyboard(t: Dictionary): InlineKeyboard {
   return new InlineKeyboard()
     .text(t.menuSites, CB.sites)
@@ -24,10 +51,9 @@ export function mainMenuKeyboard(t: Dictionary): InlineKeyboard {
 }
 
 export function notLinkedKeyboard(t: Dictionary): InlineKeyboard {
-  return new InlineKeyboard()
-    .url(t.openApp, appUrl('/settings?tab=notifications'))
-    .row()
-    .text(t.menuLanguage, CB.language);
+  const keyboard = new InlineKeyboard();
+  if (urlButton(keyboard, t.openApp, '/settings?tab=notifications')) keyboard.row();
+  return keyboard.text(t.menuLanguage, CB.language);
 }
 
 export function backKeyboard(t: Dictionary, target: string = CB.menu): InlineKeyboard {
@@ -49,17 +75,15 @@ export function siteKeyboard(
   t: Dictionary,
   site: { id: string; url: string; paused: boolean },
 ): InlineKeyboard {
-  return new InlineKeyboard()
+  const keyboard = new InlineKeyboard()
     .text(t.checkNow, withId(CB.check, site.id))
     .text(site.paused ? t.resume : t.pause, withId(CB.pauseToggle, site.id))
     .row()
     .text(t.siteIncidents, withId(CB.siteIncidents, site.id))
     .text(t.delete, withId(CB.deleteAsk, site.id))
-    .row()
-    .url(t.openApp, appUrl(`/dashboard/monitors/${site.id}`))
-    .row()
-    .text(t.back, CB.sites)
-    .text(t.home, CB.menu);
+    .row();
+  if (urlButton(keyboard, t.openApp, `/dashboard/monitors/${site.id}`)) keyboard.row();
+  return keyboard.text(t.back, CB.sites).text(t.home, CB.menu);
 }
 
 export function confirmDeleteKeyboard(t: Dictionary, siteId: string): InlineKeyboard {
@@ -131,8 +155,8 @@ export function planKeyboard(
     if (options.hasCustomer) {
       keyboard.text(t.manageBilling, CB.portal).row();
     }
-  } else {
-    keyboard.url(t.openBilling, appUrl('/settings?tab=billing')).row();
+  } else if (urlButton(keyboard, t.openBilling, '/settings?tab=billing')) {
+    keyboard.row();
   }
   return keyboard.text(t.home, CB.menu);
 }
@@ -142,12 +166,9 @@ export function checkoutKeyboard(t: Dictionary, url: string): InlineKeyboard {
 }
 
 export function accountKeyboard(t: Dictionary): InlineKeyboard {
-  return new InlineKeyboard()
-    .url(t.openApp, appUrl('/settings'))
-    .row()
-    .text(t.disconnect, CB.disconnectAsk)
-    .row()
-    .text(t.home, CB.menu);
+  const keyboard = new InlineKeyboard();
+  if (urlButton(keyboard, t.openApp, '/settings')) keyboard.row();
+  return keyboard.text(t.disconnect, CB.disconnectAsk).row().text(t.home, CB.menu);
 }
 
 export function confirmDisconnectKeyboard(t: Dictionary): InlineKeyboard {
@@ -166,7 +187,7 @@ export function languageKeyboard(t: Dictionary, current: 'en' | 'ru', linked: bo
 }
 
 export function alertKeyboard(t: Dictionary, monitorId: string): InlineKeyboard {
-  return new InlineKeyboard()
-    .text(t.alertOpenSite, withId(CB.site, monitorId))
-    .url(t.openApp, appUrl(`/dashboard/monitors/${monitorId}`));
+  const keyboard = new InlineKeyboard().text(t.alertOpenSite, withId(CB.site, monitorId));
+  urlButton(keyboard, t.openApp, `/dashboard/monitors/${monitorId}`);
+  return keyboard;
 }

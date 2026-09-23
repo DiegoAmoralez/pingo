@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { dictionary, toBotLocale } from './i18n.js';
 import { escapeHtml, looksLikeUrl, formatDurationMs } from './format.js';
 import { CB, idFrom, withId } from './callbacks.js';
-import { mainMenuKeyboard, notificationsKeyboard, siteKeyboard } from './keyboards.js';
+import { mainMenuKeyboard, notificationsKeyboard, publicAppUrl, siteKeyboard } from './keyboards.js';
 import { renderMenu, renderSite, statusLabel, type ViewContext } from './views.js';
 
 const en: ViewContext = { t: dictionary('en'), locale: 'en', timeZone: 'UTC' };
@@ -56,6 +56,19 @@ describe('callback payloads', () => {
 });
 
 describe('keyboards', () => {
+  it('skips dashboard links Telegram would reject (localhost / private hosts)', () => {
+    const original = process.env.APP_URL;
+    process.env.APP_URL = 'http://localhost:3000';
+    expect(publicAppUrl('/settings')).toBeNull();
+    const localButtons = siteKeyboard(dictionary('en'), { id: 'm1', url: 'https://a.com', paused: false })
+      .inline_keyboard.flat();
+    expect(localButtons.some((b) => 'url' in b)).toBe(false);
+
+    process.env.APP_URL = 'https://pingogo.app/';
+    expect(publicAppUrl('/settings')).toBe('https://pingogo.app/settings');
+    process.env.APP_URL = original;
+  });
+
   it('builds the main menu with every section', () => {
     const rows = mainMenuKeyboard(dictionary('en')).inline_keyboard;
     const labels = rows.flat().map((b) => b.text);
