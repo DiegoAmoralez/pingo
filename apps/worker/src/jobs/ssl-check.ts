@@ -6,7 +6,7 @@ import {
   isMockMonitoring,
   type SslCheckJob,
 } from '@pingo/shared';
-import { formatLongDate, sslExpiryMessage } from '@pingo/notifications';
+import { formatLongDate, sslExpiryMessage, toAlertLocale } from '@pingo/notifications';
 import { queueAlert } from '../services/alerts.js';
 
 const log = childLogger({ job: 'ssl-check' });
@@ -14,9 +14,10 @@ const log = childLogger({ job: 'ssl-check' });
 export async function processSslCheck(data: SslCheckJob) {
   const monitor = await prisma.monitor.findUnique({
     where: { id: data.monitorId },
-    include: { sslRecords: true, user: { include: { preferences: true } } },
+    include: { sslRecords: true, user: { include: { preferences: true, telegram: true } } },
   });
   if (!monitor || monitor.pausedAt) return;
+  const locale = toAlertLocale(monitor.user.telegram?.locale);
 
   const result = isMockMonitoring()
     ? {
@@ -69,7 +70,8 @@ export async function processSslCheck(data: SslCheckJob) {
       text: sslExpiryMessage({
         hostname: monitor.displayHostname,
         days: threshold,
-        expiration: result.validUntil ? formatLongDate(result.validUntil) : 'unknown',
+        expiration: result.validUntil ? formatLongDate(result.validUntil, locale) : '—',
+        locale,
       }),
     });
     await prisma.sslRecord.update({

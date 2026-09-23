@@ -12,7 +12,7 @@ import { processFirstCheck } from './jobs/first-check.js';
 import { processNotification } from './jobs/send-notification.js';
 import { processCleanup } from './jobs/cleanup.js';
 import { processDispatch } from './jobs/dispatch.js';
-import { startTelegramRuntime } from './telegram-runtime.js';
+import { startTelegramRuntime, stopTelegramRuntime } from './telegram-runtime.js';
 
 const log = childLogger({ service: 'worker' });
 
@@ -73,6 +73,7 @@ async function main() {
 
   const shutdown = async () => {
     log.info('worker shutting down');
+    await stopTelegramRuntime();
     await Promise.all(workers.map((w) => w.close()));
     await prisma.$disconnect();
     process.exit(0);

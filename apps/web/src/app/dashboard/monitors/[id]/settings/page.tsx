@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { ConfirmDialog, PageHeader } from '@/components/app-primitives';
+import { useLocale } from '@/components/locale-provider';
 
 export default function MonitorSettingsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { tr } = useLocale();
   const [id, setId] = useState<string>('');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -60,10 +62,10 @@ export default function MonitorSettingsPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Monitor settings" />
+      <PageHeader title={tr('Monitor settings', 'Настройки монитора')} />
       <form onSubmit={save} className="max-w-xl space-y-4">
         <div>
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="name">{tr('Name', 'Название')}</Label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
@@ -71,35 +73,35 @@ export default function MonitorSettingsPage({ params }: { params: Promise<{ id: 
           <Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="interval">Check interval (seconds)</Label>
+          <Label htmlFor="interval">{tr('Check interval (seconds)', 'Интервал проверки (секунды)')}</Label>
           <Input id="interval" value={interval} onChange={(e) => setInterval(e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="timeout">Timeout (seconds)</Label>
+          <Label htmlFor="timeout">{tr('Timeout (seconds)', 'Тайм-аут (секунды)')}</Label>
           <Input id="timeout" value={timeout} onChange={(e) => setTimeoutSeconds(e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="expected">Expected HTTP codes</Label>
+          <Label htmlFor="expected">{tr('Expected HTTP codes', 'Ожидаемые HTTP-коды')}</Label>
           <Input id="expected" value={expected} onChange={(e) => setExpected(e.target.value)} />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={paused} onChange={(e) => setPaused(e.target.checked)} />
-          Pause monitoring
+          {tr('Pause monitoring', 'Приостановить мониторинг')}
         </label>
-        <Button type="submit">Save</Button>
+        <Button type="submit">{tr('Save', 'Сохранить')}</Button>
       </form>
       <section className="max-w-xl rounded-2xl border border-red-200 bg-red-50 p-5">
-        <h2 className="font-semibold text-crit">Danger zone</h2>
-        <p className="mt-1 text-sm text-muted">Delete this monitor and its check history.</p>
+        <h2 className="font-semibold text-crit">{tr('Danger zone', 'Опасная зона')}</h2>
+        <p className="mt-1 text-sm text-muted">{tr('Delete this monitor and its check history.', 'Удалить монитор и всю историю проверок.')}</p>
         <Button className="mt-4" variant="danger" type="button" onClick={() => setConfirm(true)}>
-          Delete monitor
+          {tr('Delete monitor', 'Удалить монитор')}
         </Button>
       </section>
       {confirm ? (
         <ConfirmDialog
-          title="Delete monitor?"
-          description="This cannot be undone."
-          confirmLabel="Delete"
+          title={tr('Delete monitor?', 'Удалить монитор?')}
+          description={tr('This cannot be undone.', 'Это действие нельзя отменить.')}
+          confirmLabel={tr('Delete', 'Удалить')}
           onClose={() => setConfirm(false)}
           onConfirm={destroy}
         />

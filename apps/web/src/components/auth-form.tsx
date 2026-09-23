@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
+import { useLocale } from '@/components/locale-provider';
 
 export type SsoAvailability = {
   google: boolean;
@@ -18,6 +19,7 @@ export function AuthForm({
   mode: 'login' | 'register' | 'forgot';
   sso?: SsoAvailability;
 }) {
+  const { tr } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -61,9 +63,9 @@ export function AuthForm({
         redirectTo: '/reset-password',
       });
       if (result.error) throw new Error(result.error.message);
-      setMessage('If an account exists, we sent a reset link.');
+      setMessage(tr('If an account exists, we sent a reset link.', 'Если аккаунт существует, мы отправили ссылку для сброса.'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : tr('Something went wrong', 'Что-то пошло не так'));
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,7 @@ export function AuthForm({
       });
       if (result.error) throw new Error(result.error.message);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Social sign-in failed');
+      setError(err instanceof Error ? err.message : tr('Social sign-in failed', 'Не удалось войти через соцсеть'));
       setSsoLoading(null);
     }
   }
@@ -89,7 +91,7 @@ export function AuthForm({
       <form onSubmit={onSubmit} className="space-y-4">
         {mode === 'register' ? (
           <div className="space-y-1">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{tr('Name', 'Имя')}</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           </div>
         ) : null}
@@ -106,7 +108,7 @@ export function AuthForm({
         </div>
         {mode !== 'forgot' ? (
           <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{tr('Password', 'Пароль')}</Label>
             <Input
               id="password"
               type="password"
@@ -121,11 +123,11 @@ export function AuthForm({
         {error ? <p className="text-sm text-crit">{error}</p> : null}
         {message ? <p className="text-sm text-ok">{message}</p> : null}
         <Button className="w-full" disabled={loading || Boolean(ssoLoading)} type="submit">
-          {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : 'Send reset link'}
+          {loading ? tr('Please wait…', 'Подождите…') : mode === 'login' ? tr('Sign in', 'Войти') : mode === 'register' ? tr('Create account', 'Создать аккаунт') : tr('Send reset link', 'Отправить ссылку')}
         </Button>
         {mode === 'login' ? (
           <p className="text-center text-sm text-muted">
-            <Link href="/forgot-password">Forgot password?</Link>
+            <Link href="/forgot-password">{tr('Forgot password?', 'Забыли пароль?')}</Link>
           </p>
         ) : null}
       </form>
@@ -134,7 +136,7 @@ export function AuthForm({
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-muted">
             <span className="h-px flex-1 bg-border" />
-            or continue with
+            {tr('or continue with', 'или продолжить через')}
             <span className="h-px flex-1 bg-border" />
           </div>
           <div className="grid gap-2">
@@ -147,7 +149,7 @@ export function AuthForm({
                 onClick={() => signInSocial('google')}
               >
                 <GoogleIcon />
-                {ssoLoading === 'google' ? 'Redirecting…' : 'Google'}
+                {ssoLoading === 'google' ? tr('Redirecting…', 'Переходим…') : 'Google'}
               </Button>
             ) : null}
             {sso?.facebook ? (
@@ -159,7 +161,7 @@ export function AuthForm({
                 onClick={() => signInSocial('facebook')}
               >
                 <FacebookIcon />
-                {ssoLoading === 'facebook' ? 'Redirecting…' : 'Facebook'}
+                {ssoLoading === 'facebook' ? tr('Redirecting…', 'Переходим…') : 'Facebook'}
               </Button>
             ) : null}
           </div>

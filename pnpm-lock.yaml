@@ -38,6 +38,9 @@ importers:
       '@pingo/billing':
         specifier: workspace:*
         version: link:../../packages/billing
+      '@pingo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@pingo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -53,6 +56,9 @@ importers:
       '@pingo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@pingo/telegram-bot':
+        specifier: workspace:*
+        version: link:../../packages/telegram-bot
       '@radix-ui/react-dialog':
         specifier: ^1.1.13
         version: 1.1.23(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -144,6 +150,9 @@ importers:
       '@pingo/billing':
         specifier: workspace:*
         version: link:../../packages/billing
+      '@pingo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@pingo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -159,6 +168,9 @@ importers:
       '@pingo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@pingo/telegram-bot':
+        specifier: workspace:*
+        version: link:../../packages/telegram-bot
       '@prisma/client':
         specifier: ^6.8.2
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
@@ -209,6 +221,28 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
+
+  packages/core:
+    dependencies:
+      '@pingo/database':
+        specifier: workspace:*
+        version: link:../database
+      '@pingo/monitoring':
+        specifier: workspace:*
+        version: link:../monitoring
+      '@pingo/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.3
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.23.13)
 
   packages/database:
     dependencies:
@@ -309,6 +343,40 @@ importers:
       zod:
         specifier: ^3.24.4
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.1.3
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.23.13)
+
+  packages/telegram-bot:
+    dependencies:
+      '@pingo/billing':
+        specifier: workspace:*
+        version: link:../billing
+      '@pingo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pingo/database':
+        specifier: workspace:*
+        version: link:../database
+      '@pingo/monitoring':
+        specifier: workspace:*
+        version: link:../monitoring
+      '@pingo/notifications':
+        specifier: workspace:*
+        version: link:../notifications
+      '@pingo/shared':
+        specifier: workspace:*
+        version: link:../shared
+      grammy:
+        specifier: ^1.36.1
+        version: 1.46.0(supports-color@7.2.0)
     devDependencies:
       '@types/node':
         specifier: ^22.15.3

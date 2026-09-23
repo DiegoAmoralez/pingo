@@ -1,7 +1,25 @@
-export default function robots() {
-  const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+import type { MetadataRoute } from 'next';
+import { getSiteUrl } from '@/lib/site-url';
+
+export default function robots(): MetadataRoute.Robots {
+  const appUrl = getSiteUrl();
   return {
-    rules: [{ userAgent: '*', allow: '/', disallow: ['/dashboard', '/admin', '/settings', '/api'] }],
+    rules: [{
+      userAgent: '*',
+      allow: '/',
+      disallow: [
+        '/dashboard',
+        '/admin',
+        '/settings',
+        '/api',
+        '/login',
+        '/register',
+        '/onboarding',
+        '/forgot-password',
+        '/reset-password',
+        '/status/',
+      ],
+    }],
     sitemap: `${appUrl}/sitemap.xml`,
   };
 }

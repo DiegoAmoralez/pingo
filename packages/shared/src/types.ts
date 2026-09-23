@@ -28,7 +28,9 @@ export type DnsChange = {
 export type AnalyticsEventName =
   | 'user_registered'
   | 'monitor_created'
+  | 'monitor_deleted'
   | 'telegram_connected'
+  | 'telegram_disconnected'
   | 'first_check_completed'
   | 'incident_started'
   | 'incident_recovered'

@@ -12,7 +12,13 @@ import {
   type WebsiteCheckJob,
 } from '@pingo/shared';
 import { queueAlert } from '../services/alerts.js';
-import { formatDuration, formatUtc, websiteDownMessage, websiteRecoveredMessage } from '@pingo/notifications';
+import {
+  formatDuration,
+  formatUtc,
+  toAlertLocale,
+  websiteDownMessage,
+  websiteRecoveredMessage,
+} from '@pingo/notifications';
 
 const log = childLogger({ job: 'website-check' });
 
@@ -23,6 +29,7 @@ export async function processWebsiteCheck(data: WebsiteCheckJob) {
     include: { user: { include: { preferences: true, telegram: true } } },
   });
   if (!monitor || monitor.pausedAt) return;
+  const locale = toAlertLocale(monitor.user.telegram?.locale);
 
   const result = isMockMonitoring()
     ? mockHttp(monitor.url)
@@ -85,6 +92,7 @@ export async function processWebsiteCheck(data: WebsiteCheckJob) {
             : (result.errorMessage ?? 'failed'),
           failedChecks: transition.consecutiveFailures,
           startedAt: formatUtc(openIncident.startedAt),
+          locale,
         }),
       });
     }
@@ -113,8 +121,9 @@ export async function processWebsiteCheck(data: WebsiteCheckJob) {
         deduplicationKey: siteRecoveryKey(monitor.id, openIncident.id),
         text: websiteRecoveredMessage({
           hostname: monitor.displayHostname,
-          downtime: formatDuration(durationMs),
+          downtime: formatDuration(durationMs, locale),
           responseMs: result.latencyMs,
+          locale,
         }),
       });
     }

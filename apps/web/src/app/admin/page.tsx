@@ -3,9 +3,12 @@ import { requireAdmin } from '@/lib/session';
 import { AppShell } from '@/components/app-shell';
 import { MetricCard, PageHeader } from '@/components/app-primitives';
 import { getPlan } from '@pingo/shared';
+import { getLocale } from '@/lib/i18n-server';
+import { pick } from '@/lib/i18n';
 
 export default async function AdminPage() {
-  const { user } = await requireAdmin();
+  const [{ user }, locale] = await Promise.all([requireAdmin(), getLocale()]);
+  const t = (en: string, ru: string) => pick(locale, en, ru);
   const now = new Date();
   const d7 = new Date(now.getTime() - 7 * 86400000);
   const d30 = new Date(now.getTime() - 30 * 86400000);
@@ -48,36 +51,36 @@ export default async function AdminPage() {
   return (
     <AppShell email={user.email} isAdmin>
       <div className="space-y-8">
-        <PageHeader title="Admin" description="Product health and billing snapshot." />
+        <PageHeader title={t('Admin', 'Администрирование')} description={t('Product health and billing snapshot.', 'Состояние продукта и сводка по оплате.')} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard label="Total users" value={String(users)} />
-          <MetricCard label="New 7d / 30d" value={`${new7} / ${new30}`} />
-          <MetricCard label="Paid users" value={String(paid.length)} />
+          <MetricCard label={t('Total users', 'Всего пользователей')} value={String(users)} />
+          <MetricCard label={t('New 7d / 30d', 'Новые за 7 / 30 дней')} value={`${new7} / ${new30}`} />
+          <MetricCard label={t('Paid users', 'Платные пользователи')} value={String(paid.length)} />
           <MetricCard label="MRR" value={`$${mrr.toFixed(2)}`} />
-          <MetricCard label="Active monitors" value={String(monitors)} />
+          <MetricCard label={t('Active monitors', 'Активные мониторы')} value={String(monitors)} />
           <MetricCard
-            label="Telegram connected"
+            label={t('Telegram connected', 'Telegram подключён')}
             value={users ? `${Math.round((telegram / users) * 100)}%` : '0%'}
           />
-          <MetricCard label="Incidents 24h" value={String(incidents24)} />
+          <MetricCard label={t('Incidents 24h', 'События за 24 ч.')} value={String(incidents24)} />
           <MetricCard
-            label="Worker heartbeat"
-            value={heartbeat ? new Date(heartbeat.updatedAt).toLocaleTimeString() : 'missing'}
+            label={t('Worker heartbeat', 'Состояние worker')}
+            value={heartbeat ? new Date(heartbeat.updatedAt).toLocaleTimeString() : t('missing', 'нет данных')}
           />
-          <MetricCard label="Telegram errors 24h" value={String(failedNotifications)} />
+          <MetricCard label={t('Telegram errors 24h', 'Ошибки Telegram за 24 ч.')} value={String(failedNotifications)} />
         </div>
 
         <section className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="font-semibold">Users</h2>
+          <h2 className="font-semibold">{t('Users', 'Пользователи')}</h2>
           <div className="mt-4 overflow-x-auto text-sm">
             <table className="w-full text-left">
               <thead>
                 <tr className="text-muted">
                   <th className="py-2">Email</th>
-                  <th>Plan</th>
-                  <th>Monitors</th>
-                  <th>Status</th>
-                  <th>Created</th>
+                  <th>{t('Plan', 'Тариф')}</th>
+                  <th>{t('Monitors', 'Мониторы')}</th>
+                  <th>{t('Status', 'Статус')}</th>
+                  <th>{t('Created', 'Создан')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,15 +99,15 @@ export default async function AdminPage() {
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="font-semibold">Monitors</h2>
+          <h2 className="font-semibold">{t('Monitors', 'Мониторы')}</h2>
           <div className="mt-4 overflow-x-auto text-sm">
             <table className="w-full text-left">
               <thead>
                 <tr className="text-muted">
-                  <th className="py-2">Domain</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>Last check</th>
+                  <th className="py-2">{t('Domain', 'Домен')}</th>
+                  <th>{t('Status', 'Статус')}</th>
+                  <th>{t('Owner', 'Владелец')}</th>
+                  <th>{t('Last check', 'Последняя проверка')}</th>
                 </tr>
               </thead>
               <tbody>

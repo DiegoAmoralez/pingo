@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { PageHeader, ConfirmDialog } from '@/components/app-primitives';
+import { useLocale } from '@/components/locale-provider';
 
 type SettingsPayload = {
   user: { name: string; email: string; timezone: string };
@@ -27,14 +28,16 @@ function isTab(value: string | null): value is Tab {
 }
 
 export default function SettingsPage() {
+  const { tr } = useLocale();
   return (
-    <Suspense fallback={<p>Loading…</p>}>
+    <Suspense fallback={<p>{tr('Loading…', 'Загрузка…')}</p>}>
       <SettingsInner />
     </Suspense>
   );
 }
 
 function SettingsInner() {
+  const { tr } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<SettingsPayload | null>(null);
@@ -63,15 +66,36 @@ function SettingsInner() {
     router.replace(`/settings?tab=${next}`, { scroll: false });
   }
 
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p>{tr('Loading…', 'Загрузка…')}</p>;
+
+  const tabLabels: Record<Tab, string> = {
+    profile: tr('Profile', 'Профиль'),
+    notifications: tr('Notifications', 'Уведомления'),
+    telegram: 'Telegram',
+    billing: tr('Billing', 'Оплата'),
+    security: tr('Security', 'Безопасность'),
+  };
+  const planLabel: Record<string, string> = {
+    FREE: tr('Free', 'Бесплатный'),
+    PERSONAL: tr('Personal', 'Личный'),
+    PRO: tr('Pro', 'Профессиональный'),
+    AGENCY: tr('Agency', 'Агентство'),
+  };
+  const statusLabel: Record<string, string> = {
+    ACTIVE: tr('Active', 'Активен'),
+    TRIALING: tr('Trial', 'Пробный период'),
+    PAST_DUE: tr('Past due', 'Просрочен'),
+    CANCELED: tr('Canceled', 'Отменён'),
+    INCOMPLETE: tr('Incomplete', 'Не завершён'),
+  };
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Settings" />
-      <div className="flex flex-wrap gap-2">
+      <PageHeader title={tr('Settings', 'Настройки')} />
+      <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-white p-2">
         {TABS.map((item) => (
           <Button key={item} size="sm" variant={tab === item ? 'default' : 'secondary'} onClick={() => selectTab(item)}>
-            {item[0]!.toUpperCase() + item.slice(1)}
+            {tabLabels[item]}
           </Button>
         ))}
       </div>
@@ -79,7 +103,7 @@ function SettingsInner() {
       <div key={tab} className="tab-panel">
         {tab === 'profile' ? (
           <form
-            className="max-w-lg space-y-4"
+            className="brand-card max-w-2xl space-y-5 rounded-3xl p-6 sm:p-8"
             onSubmit={async (e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget);
@@ -95,7 +119,7 @@ function SettingsInner() {
             }}
           >
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{tr('Name', 'Имя')}</Label>
               <Input id="name" name="name" defaultValue={data.user.name} />
             </div>
             <div>
@@ -103,16 +127,16 @@ function SettingsInner() {
               <Input id="email" value={data.user.email} disabled />
             </div>
             <div>
-              <Label htmlFor="timezone">Timezone</Label>
+              <Label htmlFor="timezone">{tr('Timezone', 'Часовой пояс')}</Label>
               <Input id="timezone" name="timezone" defaultValue={data.user.timezone} />
             </div>
-            <Button type="submit">Save</Button>
+            <Button type="submit">{tr('Save', 'Сохранить')}</Button>
           </form>
         ) : null}
 
         {tab === 'notifications' ? (
           <form
-            className="max-w-lg space-y-3"
+            className="brand-card max-w-2xl space-y-3 rounded-3xl p-6 sm:p-8"
             onSubmit={async (e) => {
               e.preventDefault();
               const form = e.currentTarget;
@@ -132,31 +156,31 @@ function SettingsInner() {
             }}
           >
             {([
-              ['websiteDowntime', 'Website downtime'],
-              ['websiteRecovery', 'Website recovery'],
-              ['sslExpiration', 'SSL expiration'],
-              ['domainExpiration', 'Domain expiration'],
-              ['dnsChanges', 'DNS changes'],
+              ['websiteDowntime', tr('Website downtime', 'Недоступность сайта')],
+              ['websiteRecovery', tr('Website recovery', 'Восстановление сайта')],
+              ['sslExpiration', tr('SSL expiration', 'Окончание SSL')],
+              ['domainExpiration', tr('Domain expiration', 'Окончание домена')],
+              ['dnsChanges', tr('DNS changes', 'Изменения DNS')],
             ] as const).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name={key} defaultChecked={data.preferences[key]} />
+              <label key={key} className="flex items-center justify-between gap-3 rounded-xl bg-background px-4 py-3 text-sm font-medium">
                 {label}
+                <input className="h-4 w-4 accent-[var(--accent)]" type="checkbox" name={key} defaultChecked={data.preferences[key]} />
               </label>
             ))}
-            <Button type="submit">Save preferences</Button>
+            <Button type="submit">{tr('Save preferences', 'Сохранить настройки')}</Button>
           </form>
         ) : null}
 
         {tab === 'telegram' ? (
-          <div className="max-w-lg space-y-4 rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-semibold">Telegram</h2>
+          <div className="brand-card max-w-2xl space-y-4 rounded-3xl p-6 sm:p-8">
+            <h2 className="text-xl font-bold">Telegram</h2>
             {data.telegram.connected ? (
               <>
-                <p>Connected</p>
-                <p className="text-muted">{data.telegram.username ? `@${data.telegram.username}` : 'Linked chat'}</p>
+                <p>{tr('Connected', 'Подключён')}</p>
+                <p className="text-muted">{data.telegram.username ? `@${data.telegram.username}` : tr('Linked chat', 'Привязанный чат')}</p>
                 <div className="flex gap-2">
                   <Button type="button" onClick={() => fetch('/api/telegram/test', { method: 'POST' })}>
-                    Send test notification
+                    {tr('Send test notification', 'Отправить тест')}
                   </Button>
                   <Button
                     type="button"
@@ -166,7 +190,7 @@ function SettingsInner() {
                       load();
                     }}
                   >
-                    Disconnect
+                    {tr('Disconnect', 'Отключить')}
                   </Button>
                 </div>
               </>
@@ -179,20 +203,20 @@ function SettingsInner() {
                   if (json.url) window.open(json.url, '_blank');
                 }}
               >
-                Connect Telegram
+                {tr('Connect Telegram', 'Подключить Telegram')}
               </Button>
             )}
           </div>
         ) : null}
 
         {tab === 'billing' ? (
-          <div className="max-w-lg space-y-4 rounded-2xl border border-border bg-card p-5">
+          <div className="brand-card max-w-2xl space-y-4 rounded-3xl p-6 sm:p-8">
             <p>
-              Current plan: <strong>{data.subscription.plan}</strong>
+              {tr('Current plan:', 'Текущий тариф:')} <strong>{planLabel[data.subscription.plan] ?? data.subscription.plan}</strong>
             </p>
-            <p className="text-sm text-muted">Status: {data.subscription.status}</p>
+            <p className="text-sm text-muted">{tr('Status:', 'Статус:')} {statusLabel[data.subscription.status] ?? data.subscription.status}</p>
             <p className="text-sm text-muted">
-              Stripe test mode. Card <code>4242 4242 4242 4242</code>, any future date, any CVC.
+              {tr('Stripe test mode. Card', 'Тестовый режим Stripe. Карта')} <code>4242 4242 4242 4242</code>, {tr('any future date, any CVC.', 'любая будущая дата и любой CVC.')}
             </p>
             {billingError ? <p className="text-sm text-crit">{billingError}</p> : null}
             <div className="flex flex-wrap gap-2">
@@ -216,13 +240,13 @@ function SettingsInner() {
                         window.location.href = json.url;
                         return;
                       }
-                      setBillingError(json.error ?? 'Checkout is not available yet.');
+                      setBillingError(json.error ?? tr('Checkout is not available yet.', 'Оплата пока недоступна.'));
                     } finally {
                       setBillingLoading(null);
                     }
                   }}
                 >
-                  {billingLoading === plan ? 'Opening Stripe…' : `Upgrade to ${plan}`}
+                  {billingLoading === plan ? tr('Opening Stripe…', 'Открываем Stripe…') : `${tr('Upgrade to', 'Перейти на')} ${plan}`}
                 </Button>
               ))}
               <Button
@@ -239,26 +263,25 @@ function SettingsInner() {
                       window.location.href = json.url;
                       return;
                     }
-                    setBillingError(json.error ?? 'Billing portal is not available yet.');
+                    setBillingError(json.error ?? tr('Billing portal is not available yet.', 'Платёжный портал пока недоступен.'));
                   } finally {
                     setBillingLoading(null);
                   }
                 }}
               >
-                {billingLoading === 'portal' ? 'Opening…' : 'Manage billing'}
+                {billingLoading === 'portal' ? tr('Opening…', 'Открываем…') : tr('Manage billing', 'Управлять оплатой')}
               </Button>
             </div>
           </div>
         ) : null}
 
         {tab === 'security' ? (
-          <div className="max-w-lg space-y-4">
+          <div className="brand-card max-w-2xl space-y-4 rounded-3xl p-6 sm:p-8">
             <p className="text-sm text-muted">
-              Password reset is available from the login screen. Deleting your account removes monitors,
-              checks, Telegram links and billing customer mapping.
+              {tr('Password reset is available from the login screen. Deleting your account removes monitors, checks, Telegram links and billing customer mapping.', 'Сбросить пароль можно на экране входа. Удаление аккаунта удалит мониторы, проверки, привязку Telegram и платёжный профиль.')}
             </p>
             <Button variant="danger" type="button" onClick={() => setConfirmDelete(true)}>
-              Delete account
+              {tr('Delete account', 'Удалить аккаунт')}
             </Button>
           </div>
         ) : null}
@@ -266,9 +289,9 @@ function SettingsInner() {
 
       {confirmDelete ? (
         <ConfirmDialog
-          title="Delete account?"
-          description="This permanently removes your PINGO data."
-          confirmLabel="Delete account"
+          title={tr('Delete account?', 'Удалить аккаунт?')}
+          description={tr('This permanently removes your PingoGo data.', 'Все ваши данные PingoGo будут удалены безвозвратно.')}
+          confirmLabel={tr('Delete account', 'Удалить аккаунт')}
           onClose={() => setConfirmDelete(false)}
           onConfirm={async () => {
             await fetch('/api/account', { method: 'DELETE' });

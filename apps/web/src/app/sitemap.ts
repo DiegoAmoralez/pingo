@@ -1,5 +1,8 @@
-export default function sitemap() {
-  const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+import type { MetadataRoute } from 'next';
+import { getSiteUrl } from '@/lib/site-url';
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const appUrl = getSiteUrl();
   const pages = [
     '',
     '/pricing',
@@ -11,8 +14,9 @@ export default function sitemap() {
     '/privacy',
     '/terms',
   ];
-  return pages.map((path) => ({
+  return pages.map((path, index) => ({
     url: `${appUrl}${path}`,
-    lastModified: new Date(),
+    changeFrequency: index === 0 ? 'weekly' : 'monthly',
+    priority: index === 0 ? 1 : path === '/pricing' ? 0.9 : 0.7,
   }));
 }

@@ -13,11 +13,13 @@
   },
   "dependencies": {
     "@pingo/billing": "workspace:*",
+    "@pingo/core": "workspace:*",
     "@pingo/database": "workspace:*",
     "@pingo/email": "workspace:*",
     "@pingo/monitoring": "workspace:*",
     "@pingo/notifications": "workspace:*",
     "@pingo/shared": "workspace:*",
+    "@pingo/telegram-bot": "workspace:*",
     "@prisma/client": "^6.8.2",
     "bullmq": "^5.52.2",
     "dotenv": "^16.5.0",

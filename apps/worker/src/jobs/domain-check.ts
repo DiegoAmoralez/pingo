@@ -7,7 +7,7 @@ import {
   shouldEmitThresholdAlert,
 } from '@pingo/monitoring';
 import { DOMAIN_CHECK_INTERVAL_SECONDS, childLogger, isMockMonitoring, type DomainCheckJob } from '@pingo/shared';
-import { domainExpiryMessage, formatLongDate } from '@pingo/notifications';
+import { domainExpiryMessage, formatLongDate, toAlertLocale } from '@pingo/notifications';
 import { queueAlert } from '../services/alerts.js';
 
 const log = childLogger({ job: 'domain-check' });
@@ -15,9 +15,10 @@ const log = childLogger({ job: 'domain-check' });
 export async function processDomainCheck(data: DomainCheckJob) {
   const domain = await prisma.domain.findUnique({
     where: { id: data.domainId },
-    include: { user: { include: { preferences: true } }, monitors: true },
+    include: { user: { include: { preferences: true, telegram: true } }, monitors: true },
   });
   if (!domain) return;
+  const locale = toAlertLocale(domain.user.telegram?.locale);
 
   const info = isMockMonitoring()
     ? {
@@ -108,7 +109,8 @@ export async function processDomainCheck(data: DomainCheckJob) {
         domain: domain.displayDomain,
         days: threshold,
         registrar: info.registrar,
-        expiration: formatLongDate(info.expiresAt),
+        expiration: formatLongDate(info.expiresAt, locale),
+        locale,
       }),
     });
     await prisma.domain.update({

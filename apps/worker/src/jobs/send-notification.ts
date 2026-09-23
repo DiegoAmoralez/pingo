@@ -1,6 +1,7 @@
 import { prisma } from '@pingo/database';
 import { sendTelegramMessage } from '@pingo/notifications';
 import { childLogger, type SendNotificationJob } from '@pingo/shared';
+import { alertKeyboard, dictionary, toBotLocale } from '@pingo/telegram-bot';
 
 const log = childLogger({ job: 'send-notification' });
 
@@ -12,7 +13,8 @@ export async function processNotification(data: SendNotificationJob) {
   if (!event) return;
   if (event.status === 'SENT') return;
 
-  const chatId = event.user.telegram?.telegramChatId;
+  const connection = event.user.telegram;
+  const chatId = connection?.telegramChatId;
   if (!chatId) {
     await prisma.notificationEvent.update({
       where: { id: event.id },
@@ -25,9 +27,15 @@ export async function processNotification(data: SendNotificationJob) {
   const text =
     typeof event.payload === 'object' && event.payload && 'text' in event.payload
       ? String((event.payload as { text: string }).text)
-      : 'PINGO notification';
+      : 'PingoGo notification';
 
-  await sendTelegramMessage(chatId, text);
+  // Alerts about a specific site get a button that opens its card in the bot.
+  const replyMarkup =
+    event.monitorId && event.type !== 'TEST'
+      ? alertKeyboard(dictionary(toBotLocale(connection?.locale)), event.monitorId)
+      : undefined;
+
+  await sendTelegramMessage(chatId, text, { replyMarkup });
   await prisma.notificationEvent.update({
     where: { id: event.id },
     data: { status: 'SENT', sentAt: new Date() },

@@ -2,7 +2,7 @@ import { prisma } from '@pingo/database';
 import { diffDns, dnsChangeKey, lookupDns, nsChangeKey } from '@pingo/monitoring';
 import type { DnsRecords } from '@pingo/shared';
 import { DNS_CHECK_INTERVAL_SECONDS, childLogger, isMockMonitoring, type DnsCheckJob } from '@pingo/shared';
-import { dnsChangedMessage } from '@pingo/notifications';
+import { dnsChangedMessage, toAlertLocale } from '@pingo/notifications';
 import { queueAlert } from '../services/alerts.js';
 
 const log = childLogger({ job: 'dns-check' });
@@ -12,10 +12,11 @@ export async function processDnsCheck(data: DnsCheckJob) {
     where: { id: data.monitorId },
     include: {
       dnsSnapshots: { orderBy: { createdAt: 'desc' }, take: 1 },
-      user: { include: { preferences: true } },
+      user: { include: { preferences: true, telegram: true } },
     },
   });
   if (!monitor || monitor.pausedAt) return;
+  const locale = toAlertLocale(monitor.user.telegram?.locale);
 
   const records = isMockMonitoring()
     ? { A: ['93.184.216.34'], AAAA: [], CNAME: [], MX: [], NS: ['a.iana-servers.net'], TXT: [] }
@@ -41,6 +42,7 @@ export async function processDnsCheck(data: DnsCheckJob) {
           type: change.type,
           oldValues: change.oldValues,
           newValues: change.newValues,
+          locale,
         }),
       });
     }

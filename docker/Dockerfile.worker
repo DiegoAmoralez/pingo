@@ -11,6 +11,8 @@ COPY packages/monitoring/package.json packages/monitoring/package.json
 COPY packages/notifications/package.json packages/notifications/package.json
 COPY packages/billing/package.json packages/billing/package.json
 COPY packages/email/package.json packages/email/package.json
+COPY packages/core/package.json packages/core/package.json
+COPY packages/telegram-bot/package.json packages/telegram-bot/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS builder

@@ -1,18 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f4f1;
-  --foreground: #171412;
-  --card: #fffdfb;
-  --muted: #6f6a64;
-  --border: #e7e1d8;
-  --accent: #0f766e;
-  --accent-fg: #f4faf9;
-  --ring: #0f766e;
-  --ok: #15803d;
-  --warn: #b45309;
-  --crit: #dc2626;
-  --unknown: #78716c;
+  --background: #f7faf4;
+  --foreground: #06263a;
+  --card: #ffffff;
+  --muted: #66766f;
+  --border: #dfe9df;
+  --accent: #008a70;
+  --accent-fg: #ffffff;
+  --ring: #00a77e;
+  --ok: #18ad62;
+  --warn: #e9a11a;
+  --crit: #e04444;
+  --unknown: #87948e;
+  --lime: #dfff72;
+  --soft-lime: #efffd0;
+  --navy: #06263a;
 }
 
 @theme inline {
@@ -27,22 +30,36 @@
   --color-warn: var(--warn);
   --color-crit: var(--crit);
   --color-unknown: var(--unknown);
+  --color-lime: var(--lime);
+  --color-soft-lime: var(--soft-lime);
+  --color-navy: var(--navy);
   --font-sans: var(--font-geist);
 }
 
 * {
   border-color: var(--border);
+  box-sizing: border-box;
 }
 
 html,
 body {
   background: var(--background);
   color: var(--foreground);
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 78% 5%, rgba(218, 255, 109, 0.14), transparent 28rem),
+    linear-gradient(180deg, #fbfcf8 0%, var(--background) 28rem);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--lime);
+  color: var(--navy);
 }
 
 :focus-visible {
@@ -79,6 +96,41 @@ button {
     box-shadow 200ms ease,
     transform 200ms ease,
     opacity 200ms ease;
+}
+
+.brand-card {
+  border: 1px solid rgba(6, 38, 58, 0.09);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 1px 2px rgba(6, 38, 58, 0.04),
+    0 16px 44px rgba(6, 38, 58, 0.06);
+}
+
+.brand-grid {
+  background-image:
+    linear-gradient(rgba(0, 138, 112, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 138, 112, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.status-bars {
+  display: flex;
+  gap: 4px;
+}
+
+.status-bars > span {
+  width: 7px;
+  height: 21px;
+  border-radius: 3px;
+  background: #b9ef73;
+}
+
+.status-bars > span:nth-last-child(-n + 2) {
+  background: #36b978;
 }
 
 .page-transition {

@@ -16,6 +16,7 @@ import { MetricCard, PageHeader } from '@/components/app-primitives';
 import { StatusBadge, monitorTone } from '@/components/status-badge';
 import { IncidentRow } from '@/components/incident-row';
 import { daysLabel, formatRelative } from '@/lib/utils';
+import { useLocale } from '@/components/locale-provider';
 
 type MonitorPayload = {
   monitor: {
@@ -50,6 +51,7 @@ type MonitorPayload = {
 };
 
 export function MonitorDetail({ id }: { id: string }) {
+  const { locale, tr } = useLocale();
   const [data, setData] = useState<MonitorPayload | null>(null);
   const [range, setRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [checking, setChecking] = useState(false);
@@ -58,7 +60,7 @@ export function MonitorDetail({ id }: { id: string }) {
   async function load(nextRange = range) {
     const response = await fetch(`/api/monitors/${id}?range=${nextRange}`);
     if (!response.ok) {
-      setError('Could not load monitor');
+      setError(tr('Could not load monitor', 'Не удалось загрузить монитор'));
       return;
     }
     setData(await response.json());
@@ -80,9 +82,14 @@ export function MonitorDetail({ id }: { id: string }) {
   }
 
   if (error) return <p className="text-crit">{error}</p>;
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p>{tr('Loading…', 'Загрузка…')}</p>;
 
   const { monitor, uptime, lastOutage, series } = data;
+  const monitorStatus = monitor.status === 'UP'
+    ? tr('Online', 'Доступен')
+    : monitor.status === 'DOWN'
+      ? tr('Down', 'Недоступен')
+      : tr('Unknown', 'Неизвестно');
   const ssl = monitor.sslRecords[0];
   const domainDays = monitor.domain?.expiresAt
     ? Math.floor((new Date(monitor.domain.expiresAt).getTime() - Date.now()) / 86400000)
@@ -96,85 +103,85 @@ export function MonitorDetail({ id }: { id: string }) {
         description={
           <StatusBadge
             tone={monitorTone(monitor.status, ssl?.daysRemaining, domainDays)}
-            label={monitor.status === 'UP' ? 'Online' : monitor.status === 'DOWN' ? 'Down' : 'Unknown'}
+            label={monitorStatus}
           />
         }
         actions={
           <div className="flex gap-2">
             <Button onClick={checkNow} disabled={checking}>
-              {checking ? 'Checking...' : 'Check now'}
+              {checking ? tr('Checking...', 'Проверяем...') : tr('Check now', 'Проверить сейчас')}
             </Button>
             <Button asChild variant="secondary">
-              <Link href={`/dashboard/monitors/${id}/settings`}>Settings</Link>
+              <Link href={`/dashboard/monitors/${id}/settings`}>{tr('Settings', 'Настройки')}</Link>
             </Button>
           </div>
         }
       />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Status" value={monitor.status === 'UP' ? 'Online' : monitor.status} />
-        <MetricCard label="HTTP response" value={monitor.currentHttpStatus ? String(monitor.currentHttpStatus) : '—'} />
+        <MetricCard label={tr('Status', 'Статус')} value={monitorStatus} />
+        <MetricCard label={tr('HTTP response', 'HTTP-ответ')} value={monitor.currentHttpStatus ? String(monitor.currentHttpStatus) : '—'} />
         <MetricCard
-          label="Response time"
+          label={tr('Response time', 'Время ответа')}
           value={monitor.currentLatencyMs != null ? `${monitor.currentLatencyMs} ms` : '—'}
         />
-        <MetricCard label="Last check" value={formatRelative(monitor.lastCheckedAt)} />
-        <MetricCard label="Last outage" value={lastOutage ? formatRelative(lastOutage) : 'None'} />
+        <MetricCard label={tr('Last check', 'Последняя проверка')} value={formatRelative(monitor.lastCheckedAt, 'UTC', locale)} />
+        <MetricCard label={tr('Last outage', 'Последний сбой')} value={lastOutage ? formatRelative(lastOutage, 'UTC', locale) : tr('None', 'Не было')} />
         <MetricCard
-          label="Uptime"
+          label={tr('Uptime', 'Доступность')}
           value={`${uptime.h24 ?? '—'}% / ${uptime.d7 ?? '—'}% / ${uptime.d30 ?? '—'}%`}
           hint="24h / 7d / 30d"
         />
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-semibold">SSL</h2>
+      <section className="brand-card rounded-3xl p-6">
+        <h2 className="text-lg font-bold">{tr('SSL certificate', 'SSL-сертификат')}</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-muted">Issuer</dt>
+            <dt className="text-muted">{tr('Issuer', 'Издатель')}</dt>
             <dd>{ssl?.issuer ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted">Valid until</dt>
+            <dt className="text-muted">{tr('Valid until', 'Действителен до')}</dt>
             <dd>{ssl?.validUntil ? new Date(ssl.validUntil).toUTCString() : '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted">Days remaining</dt>
-            <dd>{daysLabel(ssl?.daysRemaining)}</dd>
+            <dt className="text-muted">{tr('Days remaining', 'Осталось дней')}</dt>
+            <dd>{daysLabel(ssl?.daysRemaining, locale)}</dd>
           </div>
         </dl>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-semibold">Domain</h2>
+      <section className="brand-card rounded-3xl p-6">
+        <h2 className="text-lg font-bold">{tr('Domain registration', 'Регистрация домена')}</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-muted">Registrar</dt>
+            <dt className="text-muted">{tr('Registrar', 'Регистратор')}</dt>
             <dd>{monitor.domain?.registrar ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted">Created</dt>
+            <dt className="text-muted">{tr('Created', 'Создан')}</dt>
             <dd>{monitor.domain?.registeredAt ? new Date(monitor.domain.registeredAt).toUTCString() : '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted">Expires</dt>
+            <dt className="text-muted">{tr('Expires', 'Истекает')}</dt>
             <dd>
               {monitor.domain?.expiresAt
                 ? new Date(monitor.domain.expiresAt).toUTCString()
-                : monitor.domain?.lastError ?? 'Unavailable'}
+                : monitor.domain?.lastError ?? tr('Unavailable', 'Недоступно')}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Days remaining</dt>
-            <dd>{daysLabel(domainDays)}</dd>
+            <dt className="text-muted">{tr('Days remaining', 'Осталось дней')}</dt>
+            <dd>{daysLabel(domainDays, locale)}</dd>
           </div>
         </dl>
-        <p className="mt-4 text-sm text-muted">Nameservers</p>
+        <p className="mt-4 text-sm text-muted">{tr('Nameservers', 'Серверы имён')}</p>
         <p className="text-sm">{monitor.domain?.nameservers.join(', ') || '—'}</p>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-semibold">DNS</h2>
+      <section className="brand-card rounded-3xl p-6">
+        <h2 className="text-lg font-bold">{tr('DNS records', 'DNS-записи')}</h2>
         <div className="mt-4 space-y-2 text-sm">
           {['A', 'AAAA', 'CNAME', 'MX', 'NS'].map((type) => (
             <p key={type}>
@@ -184,13 +191,13 @@ export function MonitorDetail({ id }: { id: string }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="brand-card rounded-3xl p-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Response time</h2>
+          <h2 className="text-lg font-bold">{tr('Response time', 'Время ответа')}</h2>
           <div className="flex gap-2">
             {(['24h', '7d', '30d'] as const).map((item) => (
               <Button key={item} size="sm" variant={range === item ? 'default' : 'secondary'} onClick={() => setRange(item)}>
-                Last {item}
+                {tr('Last', 'За')} {item}
               </Button>
             ))}
           </div>
@@ -198,20 +205,20 @@ export function MonitorDetail({ id }: { id: string }) {
         <div className="mt-4 h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e7e1d8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#dfe9df" />
               <XAxis dataKey="t" hide />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="latency" stroke="#0f766e" dot={false} name="ms" />
+              <Line type="monotone" dataKey="latency" stroke="#008a70" strokeWidth={3} dot={false} name="ms" />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card px-5">
-        <h2 className="pt-5 font-semibold">Incidents</h2>
+      <section className="brand-card rounded-3xl px-6">
+        <h2 className="pt-6 text-lg font-bold">{tr('Incidents', 'События')}</h2>
         {monitor.incidents.length === 0 ? (
-          <p className="py-6 text-sm text-muted">No incidents yet.</p>
+          <p className="py-6 text-sm text-muted">{tr('No incidents yet.', 'Событий пока нет.')}</p>
         ) : (
           monitor.incidents.map((incident) => (
             <IncidentRow

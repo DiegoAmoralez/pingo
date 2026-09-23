@@ -1,0 +1,31 @@
+{
+  "name": "@pingo/telegram-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pingo/billing": "workspace:*",
+    "@pingo/core": "workspace:*",
+    "@pingo/database": "workspace:*",
+    "@pingo/monitoring": "workspace:*",
+    "@pingo/notifications": "workspace:*",
+    "@pingo/shared": "workspace:*",
+    "grammy": "^1.36.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  }
+}

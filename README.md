@@ -29,7 +29,9 @@ Redis → Workers (BullMQ)
 - `apps/worker` — scheduler, HTTP/SSL/DNS/RDAP checks, Telegram delivery
 - `packages/database` — Prisma schema and client
 - `packages/monitoring` — SSRF-safe checks, state machine, RDAP provider
-- `packages/notifications` — Telegram bot and message templates
+- `packages/core` — monitor/incident/preference services shared by the web API and the bot
+- `packages/telegram-bot` — the Telegram bot UI (menus, inline keyboards, EN/RU)
+- `packages/notifications` — Telegram delivery and alert templates
 - `packages/billing` — Stripe behind a `BillingProvider` interface
 - `packages/email` — Resend behind an `EmailProvider` interface
 - `packages/shared` — plans, Zod schemas, queues, logging
@@ -122,11 +124,32 @@ curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
   -d "{\"url\":\"https://YOUR_DOMAIN/api/webhooks/telegram\",\"secret_token\":\"$TELEGRAM_WEBHOOK_SECRET\"}"
 ```
 
-6. In PINGO: Settings → Telegram → Connect Telegram, or complete onboarding.
-7. Test `/start`, `/help`, `/status`, `/list` and `/add https://example.com`.
-8. Send a test notification from Settings.
+6. In PingoGo: Settings → Telegram → Connect Telegram, or complete onboarding.
+7. Send `/menu` in the bot. Everything the dashboard does is available from inline buttons.
+8. Send a test notification from Settings or from the bot (Notifications → Send test alert).
 
 Connect tokens are stored as SHA-256 hashes and expire in 15 minutes.
+
+### What the bot can do
+
+The bot mirrors the product. One `Bot` instance from `packages/telegram-bot` is used by the
+worker (long polling in development) and by `/api/webhooks/telegram` (production).
+
+| Screen | Actions |
+| --- | --- |
+| Menu | site summary, plan usage, entry to every section |
+| My sites | one button per site with status and latency |
+| Site card | status, HTTP, latency, uptime 24h/7d/30d, last check/outage, SSL, domain, DNS; Check now, Pause/Resume, Incidents, Delete (with confirmation), open in dashboard |
+| Add site | `/add <url>`, the ➕ button, or simply sending a URL |
+| Incidents | last 10 incidents (all sites or one site) with duration and reason |
+| Notifications | toggle downtime / recovery / SSL / domain / DNS alerts, send a test alert |
+| Plan | current plan, limits, renewal date; Stripe checkout and billing portal when Stripe is configured |
+| Account | profile, connection info, disconnect Telegram |
+| Language | English / Русский — applies to the bot UI and to alert messages |
+
+Commands: `/menu`, `/sites`, `/add`, `/incidents`, `/settings`, `/plan`, `/account`, `/language`, `/help`, `/cancel`.
+The language defaults to the Telegram client language and is stored per connection.
+Alerts include an “Open site” button that jumps straight to the site card.
 
 ## Stripe setup
 

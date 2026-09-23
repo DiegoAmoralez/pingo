@@ -1,4 +1,5 @@
 import { Bot } from 'grammy';
+import type { InlineKeyboardMarkup } from 'grammy/types';
 import { logger } from '@pingo/shared';
 
 let sender: Bot | null = null;
@@ -10,13 +11,24 @@ function getSender(): Bot | null {
   return sender;
 }
 
-export async function sendTelegramMessage(chatId: string, text: string): Promise<void> {
+export type TelegramSendOptions = {
+  replyMarkup?: InlineKeyboardMarkup;
+};
+
+export async function sendTelegramMessage(
+  chatId: string,
+  text: string,
+  options: TelegramSendOptions = {},
+): Promise<void> {
   const bot = getSender();
   if (!bot) {
     logger.warn('telegram send skipped: TELEGRAM_BOT_TOKEN is not set');
     throw new Error('Telegram is not configured');
   }
-  await bot.api.sendMessage(chatId, text);
+  await bot.api.sendMessage(chatId, text, {
+    reply_markup: options.replyMarkup,
+    link_preview_options: { is_disabled: true },
+  });
 }
 
 export function telegramDeepLink(token: string): string {

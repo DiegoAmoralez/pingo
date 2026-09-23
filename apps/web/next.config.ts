@@ -27,11 +27,18 @@ const nextConfig: NextConfig = {
     '@pingo/notifications',
     '@pingo/billing',
     '@pingo/email',
+    '@pingo/core',
+    '@pingo/telegram-bot',
   ],
   serverExternalPackages: ['@prisma/client', 'ioredis', 'bullmq', 'pino', 'grammy'],
   webpack: (config) => {
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js'],
+    };
+    // BullMQ ships an optional Valkey GLIDE adapter; PingoGo uses ioredis.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@valkey/valkey-glide': false,
     };
     return config;
   },

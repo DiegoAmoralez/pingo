@@ -8,15 +8,17 @@
     "start": "next start --port 3000",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@pingo/billing": "workspace:*",
+    "@pingo/core": "workspace:*",
     "@pingo/database": "workspace:*",
     "@pingo/email": "workspace:*",
     "@pingo/monitoring": "workspace:*",
     "@pingo/notifications": "workspace:*",
     "@pingo/shared": "workspace:*",
+    "@pingo/telegram-bot": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.13",
     "@radix-ui/react-dropdown-menu": "^2.1.14",
     "@radix-ui/react-label": "^2.1.6",
