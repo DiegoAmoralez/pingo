@@ -1,15 +1,37 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@pingo/shared';
 import { getRedis } from '@pingo/shared/redis';
+import { prisma } from '@pingo/database';
 import { auth } from './auth';
+import { bearerToken, verifyWebAppToken } from './telegram-webapp';
 import { ZodError } from 'zod';
 
-export async function getApiUser(request: Request) {
+export type ApiUser = { id: string; email: string; name: string };
+
+/**
+ * Resolves the caller: a normal browser session (better-auth cookie) or a
+ * Telegram Mini App token passed as `Authorization: Bearer`.
+ */
+export async function getApiUser(request: Request): Promise<ApiUser> {
   const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user) {
-    throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+  if (session?.user) {
+    return { id: session.user.id, email: session.user.email, name: session.user.name };
   }
-  return session.user;
+
+  const token = bearerToken(request);
+  const payload = token ? verifyWebAppToken(token) : null;
+  if (payload) {
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, email: true, name: true, telegram: { select: { telegramUserId: true } } },
+    });
+    // The token stays valid only while this Telegram account is still linked.
+    if (user && user.telegram?.telegramUserId === payload.telegramUserId) {
+      return { id: user.id, email: user.email, name: user.name };
+    }
+  }
+
+  throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
 }
 
 export function jsonError(error: unknown) {

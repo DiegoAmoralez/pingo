@@ -28,6 +28,14 @@ export function publicAppUrl(path = ''): string | null {
   }
 }
 
+/** Mini Apps must be served over HTTPS from a public host. */
+export function miniAppUrl(path = '/tg'): string | null {
+  const url = publicAppUrl(path);
+  return url?.startsWith('https://') ? url : null;
+}
+
+export const MINI_APP_PATH = '/tg';
+
 function urlButton(keyboard: InlineKeyboard, label: string, path: string): boolean {
   const url = publicAppUrl(path);
   if (!url) return false;
@@ -35,8 +43,21 @@ function urlButton(keyboard: InlineKeyboard, label: string, path: string): boole
   return true;
 }
 
+/**
+ * Prefers opening the Telegram Mini App; falls back to a plain dashboard link
+ * when HTTPS is unavailable, and to nothing on localhost.
+ */
+function appButton(keyboard: InlineKeyboard, t: Dictionary, miniPath: string, webPath: string): boolean {
+  const mini = miniAppUrl(miniPath);
+  if (mini) {
+    keyboard.webApp(t.openMiniApp, mini);
+    return true;
+  }
+  return urlButton(keyboard, t.openApp, webPath);
+}
+
 export function mainMenuKeyboard(t: Dictionary): InlineKeyboard {
-  return new InlineKeyboard()
+  const keyboard = new InlineKeyboard()
     .text(t.menuSites, CB.sites)
     .text(t.menuAdd, CB.add)
     .row()
@@ -48,11 +69,14 @@ export function mainMenuKeyboard(t: Dictionary): InlineKeyboard {
     .row()
     .text(t.menuLanguage, CB.language)
     .text(t.menuHelp, CB.help);
+  const mini = miniAppUrl(MINI_APP_PATH);
+  if (mini) keyboard.row().webApp(t.openMiniApp, mini);
+  return keyboard;
 }
 
 export function notLinkedKeyboard(t: Dictionary): InlineKeyboard {
   const keyboard = new InlineKeyboard();
-  if (urlButton(keyboard, t.openApp, '/settings?tab=notifications')) keyboard.row();
+  if (appButton(keyboard, t, MINI_APP_PATH, '/settings?tab=notifications')) keyboard.row();
   return keyboard.text(t.menuLanguage, CB.language);
 }
 
@@ -82,7 +106,7 @@ export function siteKeyboard(
     .text(t.siteIncidents, withId(CB.siteIncidents, site.id))
     .text(t.delete, withId(CB.deleteAsk, site.id))
     .row();
-  if (urlButton(keyboard, t.openApp, `/dashboard/monitors/${site.id}`)) keyboard.row();
+  if (appButton(keyboard, t, `${MINI_APP_PATH}?monitor=${site.id}`, `/dashboard/monitors/${site.id}`)) keyboard.row();
   return keyboard.text(t.back, CB.sites).text(t.home, CB.menu);
 }
 
@@ -155,7 +179,7 @@ export function planKeyboard(
     if (options.hasCustomer) {
       keyboard.text(t.manageBilling, CB.portal).row();
     }
-  } else if (urlButton(keyboard, t.openBilling, '/settings?tab=billing')) {
+  } else if (appButton(keyboard, t, MINI_APP_PATH, '/settings?tab=billing')) {
     keyboard.row();
   }
   return keyboard.text(t.home, CB.menu);
@@ -167,7 +191,7 @@ export function checkoutKeyboard(t: Dictionary, url: string): InlineKeyboard {
 
 export function accountKeyboard(t: Dictionary): InlineKeyboard {
   const keyboard = new InlineKeyboard();
-  if (urlButton(keyboard, t.openApp, '/settings')) keyboard.row();
+  if (appButton(keyboard, t, MINI_APP_PATH, '/settings')) keyboard.row();
   return keyboard.text(t.disconnect, CB.disconnectAsk).row().text(t.home, CB.menu);
 }
 
@@ -188,6 +212,6 @@ export function languageKeyboard(t: Dictionary, current: 'en' | 'ru', linked: bo
 
 export function alertKeyboard(t: Dictionary, monitorId: string): InlineKeyboard {
   const keyboard = new InlineKeyboard().text(t.alertOpenSite, withId(CB.site, monitorId));
-  urlButton(keyboard, t.openApp, `/dashboard/monitors/${monitorId}`);
+  appButton(keyboard, t, `${MINI_APP_PATH}?monitor=${monitorId}`, `/dashboard/monitors/${monitorId}`);
   return keyboard;
 }

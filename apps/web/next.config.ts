@@ -31,6 +31,20 @@ const nextConfig: NextConfig = {
     '@pingo/telegram-bot',
   ],
   serverExternalPackages: ['@prisma/client', 'ioredis', 'bullmq', 'pino', 'grammy'],
+  async headers() {
+    return [
+      {
+        // Telegram Web opens Mini Apps inside an iframe on *.telegram.org.
+        source: '/tg',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org",
+          },
+        ],
+      },
+    ];
+  },
   webpack: (config) => {
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js'],

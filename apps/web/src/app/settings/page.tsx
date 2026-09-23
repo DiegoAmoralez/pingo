@@ -46,6 +46,24 @@ function SettingsInner() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
+  const [testState, setTestState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [testError, setTestError] = useState<string | null>(null);
+
+  async function handleSendTest() {
+    setTestState('sending');
+    setTestError(null);
+    try {
+      const response = await fetch('/api/telegram/test', { method: 'POST' });
+      if (!response.ok) {
+        const json = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(json?.error ?? `HTTP ${response.status}`);
+      }
+      setTestState('sent');
+    } catch (error) {
+      setTestState('error');
+      setTestError(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   async function load() {
     const response = await fetch('/api/settings');
@@ -179,8 +197,12 @@ function SettingsInner() {
                 <p>{tr('Connected', 'Подключён')}</p>
                 <p className="text-muted">{data.telegram.username ? `@${data.telegram.username}` : tr('Linked chat', 'Привязанный чат')}</p>
                 <div className="flex gap-2">
-                  <Button type="button" onClick={() => fetch('/api/telegram/test', { method: 'POST' })}>
-                    {tr('Send test notification', 'Отправить тест')}
+                  <Button type="button" onClick={handleSendTest} disabled={testState === 'sending'}>
+                    {testState === 'sending'
+                      ? tr('Sending…', 'Отправляем…')
+                      : testState === 'sent'
+                        ? tr('Sent — check Telegram', 'Отправлено — проверьте Telegram')
+                        : tr('Send test notification', 'Отправить тест')}
                   </Button>
                   <Button
                     type="button"
@@ -193,6 +215,15 @@ function SettingsInner() {
                     {tr('Disconnect', 'Отключить')}
                   </Button>
                 </div>
+                {testState === 'sent' ? (
+                  <p className="text-sm text-muted">
+                    {tr(
+                      'The message is queued; the worker delivers it within a few seconds.',
+                      'Сообщение поставлено в очередь, воркер доставит его за несколько секунд.',
+                    )}
+                  </p>
+                ) : null}
+                {testState === 'error' && testError ? <p className="text-sm text-red-600">{testError}</p> : null}
               </>
             ) : (
               <Button

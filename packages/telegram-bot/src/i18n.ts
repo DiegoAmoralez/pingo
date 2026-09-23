@@ -16,6 +16,7 @@ const en = {
   no: 'No',
   unknown: '—',
   openApp: '🌐 Open PingoGo',
+  openMiniApp: '📱 Open app',
   // Menu
   menuTitle: 'PingoGo',
   menuSites: '📡 My sites',
@@ -172,6 +173,7 @@ const ru: Dictionary = {
   no: 'Нет',
   unknown: '—',
   openApp: '🌐 Открыть PingoGo',
+  openMiniApp: '📱 Открыть приложение',
   menuTitle: 'PingoGo',
   menuSites: '📡 Мои сайты',
   menuAdd: '➕ Добавить сайт',

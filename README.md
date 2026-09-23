@@ -151,6 +151,33 @@ Commands: `/menu`, `/sites`, `/add`, `/incidents`, `/settings`, `/plan`, `/accou
 The language defaults to the Telegram client language and is stored per connection.
 Alerts include an “Open site” button that jumps straight to the site card.
 
+### Telegram Mini App
+
+`/tg` is a Telegram Mini App — the full product inside Telegram: sites list, site card with
+uptime and latency, add / pause / check / delete, incidents, notification toggles, language,
+plan and Stripe checkout. It follows the Telegram theme (light/dark) and uses the native back button.
+
+How it works:
+
+- Telegram passes `initData` to the page. `POST /api/telegram/webapp/auth` verifies its HMAC
+  (see `apps/web/src/lib/telegram-webapp.ts`) and issues a short-lived signed token. The Mini App calls the regular `/api/*` routes with `Authorization: Bearer <token>`.
+- Users who have not linked Telegram sign in with email + password right inside the Mini App
+  (`POST /api/telegram/webapp/link`), which also links the Telegram account.
+- Bot buttons (“📱 Open app”), alert buttons and the chat menu button open the Mini App.
+  `?monitor=<id>` (or `start_param=monitor_<id>`) opens a site card directly.
+
+Requirements: Telegram only opens Mini Apps over **public HTTPS**. Set `APP_URL` and
+`NEXT_PUBLIC_APP_URL` to `https://YOUR_DOMAIN`. On localhost the bot silently hides the
+Mini App buttons and keeps the command menu. The worker sets the chat menu button on start
+(`setChatMenuButton`); no BotFather configuration is needed.
+
+Local test with a tunnel: `ngrok http 3000`, set both URL variables to the `https://….ngrok-free.app`
+URL, restart `web` and `worker`, then open the bot and tap the menu button.
+
+The `/tg` page must be embeddable by `web.telegram.org`: `docker/Caddyfile` and
+`apps/web/next.config.ts` send `Content-Security-Policy: frame-ancestors …telegram.org` for it
+instead of `X-Frame-Options: DENY`. If you use your own proxy, keep that exception.
+
 ## Stripe setup
 
 Local demo (test mode):
@@ -270,6 +297,7 @@ Do not leave the seeded admin password in production.
 - [ ] HTTPS enabled
 - [ ] Stripe webhook configured
 - [ ] Telegram webhook configured
+- [ ] Telegram Mini App opens from the bot menu button (`APP_URL` is public HTTPS)
 - [ ] email domain verified
 - [ ] backups configured
 - [ ] Sentry configured

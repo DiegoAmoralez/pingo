@@ -1,12 +1,28 @@
 {$PINGO_DOMAIN:localhost}
 
 {$PINGO_DOMAIN} {
-	reverse_proxy web:3000
 	encode gzip
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
+
+	# Telegram Mini App: Telegram Web (web.telegram.org) embeds /tg in an iframe,
+	# so it must not carry X-Frame-Options DENY. frame-ancestors keeps it safe.
+	@miniapp path /tg /tg/*
+	handle @miniapp {
+		header {
+			Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
+			Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+			X-Content-Type-Options nosniff
+			Referrer-Policy strict-origin-when-cross-origin
+		}
+		reverse_proxy web:3000
+	}
+
+	handle {
+		header {
+			Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy strict-origin-when-cross-origin
+		}
+		reverse_proxy web:3000
 	}
 }

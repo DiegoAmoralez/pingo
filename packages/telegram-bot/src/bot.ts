@@ -3,6 +3,7 @@ import { logger } from '@pingo/shared';
 import { CB, idFrom } from './callbacks.js';
 import { botCommands } from './i18n.js';
 import { looksLikeUrl } from './format.js';
+import { MINI_APP_PATH, miniAppUrl } from './keyboards.js';
 import * as h from './handlers.js';
 import { loadSession, type BotContext } from './session.js';
 import { getPending } from './state.js';
@@ -145,6 +146,15 @@ export function createPingoWebhookCallback(bot: Bot<BotContext>) {
 export async function registerBotCommands(bot: Bot<BotContext>) {
   await bot.api.setMyCommands(botCommands.en);
   await bot.api.setMyCommands(botCommands.ru, { language_code: 'ru' });
+
+  // The chat menu button opens the Mini App when the app is reachable over HTTPS.
+  const mini = miniAppUrl(MINI_APP_PATH);
+  await bot.api.setChatMenuButton({
+    menu_button: mini
+      ? { type: 'web_app', text: 'PingoGo', web_app: { url: mini } }
+      : { type: 'commands' },
+  });
+  logger.info({ miniApp: mini ?? 'disabled' }, 'telegram menu button configured');
 }
 
 export async function startPingoPolling(bot: Bot<BotContext>) {

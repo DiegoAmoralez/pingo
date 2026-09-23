@@ -1,21 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7faf4;
-  --foreground: #06263a;
+  --background: #f6f9f1;
+  --foreground: #0f2a22;
   --card: #ffffff;
-  --muted: #66766f;
-  --border: #dfe9df;
-  --accent: #008a70;
+  --muted: #5f6f67;
+  --border: #dde8dc;
+  --accent: #1b7d45;
+  --accent-hover: #166838;
   --accent-fg: #ffffff;
-  --ring: #00a77e;
-  --ok: #18ad62;
-  --warn: #e9a11a;
-  --crit: #e04444;
+  --ring: #2fb35a;
+  --ok: #2fb35a;
+  --warn: #ef9f1c;
+  --crit: #e5322d;
   --unknown: #87948e;
-  --lime: #dfff72;
-  --soft-lime: #efffd0;
-  --navy: #06263a;
+  --lime: #d7f56b;
+  --soft-lime: #e9f8cf;
+  --blob: #dcf3a3;
+  --navy: #1c4d35;
+  --hand: #1b7d45;
 }
 
 @theme inline {
@@ -33,7 +36,10 @@
   --color-lime: var(--lime);
   --color-soft-lime: var(--soft-lime);
   --color-navy: var(--navy);
-  --font-sans: var(--font-geist);
+  --color-blob: var(--blob);
+  --color-accent-hover: var(--accent-hover);
+  --font-sans: var(--font-manrope);
+  --font-hand: var(--font-hand);
 }
 
 * {
@@ -49,11 +55,8 @@ body {
 }
 
 body {
-  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   min-height: 100vh;
-  background-image:
-    radial-gradient(circle at 78% 5%, rgba(218, 255, 109, 0.14), transparent 28rem),
-    linear-gradient(180deg, #fbfcf8 0%, var(--background) 28rem);
   text-rendering: optimizeLegibility;
 }
 
@@ -117,20 +120,222 @@ button {
   text-wrap: balance;
 }
 
+/* Telegram Mini App (/tg): follows the client's theme, falls back to brand colors. */
+.tg-app {
+  --tg-bg: var(--tg-theme-secondary-bg-color, #f7faf4);
+  --tg-section: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, #ffffff));
+  --tg-text: var(--tg-theme-text-color, #06263a);
+  --tg-hint: var(--tg-theme-hint-color, #66766f);
+  --tg-link: var(--tg-theme-link-color, #008a70);
+  --tg-button: var(--tg-theme-button-color, #008a70);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-separator: var(--tg-theme-section-separator-color, rgba(6, 38, 58, 0.08));
+  --tg-destructive: var(--tg-theme-destructive-text-color, #e04444);
+  min-height: 100dvh;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tg-section {
+  background: var(--tg-section);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(6, 38, 58, 0.04);
+}
+
+.tg-hint {
+  color: var(--tg-hint);
+}
+
+.tg-link {
+  color: var(--tg-link);
+}
+
+.tg-button {
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+  transition: transform 150ms ease-out, opacity 150ms ease-out;
+}
+
+.tg-button:active {
+  transform: scale(0.98);
+}
+
+.tg-button:disabled {
+  opacity: 0.55;
+}
+
+.tg-row + .tg-row {
+  border-top: 1px solid var(--tg-separator);
+}
+
+.tg-pressable {
+  transition: background-color 150ms ease-out, transform 150ms ease-out;
+}
+
+.tg-pressable:active {
+  transform: scale(0.99);
+  background-color: rgba(127, 127, 127, 0.08);
+}
+
+.tg-destructive {
+  color: var(--tg-destructive);
+}
+
+@keyframes tg-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tg-screen {
+  animation: tg-fade-in 200ms ease-out;
+}
+
 .status-bars {
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 
 .status-bars > span {
   width: 7px;
-  height: 21px;
+  height: 18px;
   border-radius: 3px;
-  background: #b9ef73;
+  background: var(--ok);
 }
 
-.status-bars > span:nth-last-child(-n + 2) {
-  background: #36b978;
+/* Landing "sticker board" ------------------------------------------------ */
+
+.hand {
+  font-family: var(--font-hand), 'Segoe Print', 'Comic Sans MS', cursive;
+  font-weight: 600;
+  color: var(--hand);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+.sticker-blob {
+  background: var(--blob);
+  border-radius: 46% 54% 42% 58% / 52% 44% 56% 48%;
+}
+
+.sticker-card {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow:
+    0 1px 2px rgba(15, 42, 34, 0.05),
+    0 18px 40px -12px rgba(15, 42, 34, 0.18);
+}
+
+.lp-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 42, 34, 0.07);
+  border-radius: 24px;
+  box-shadow: 0 10px 30px -14px rgba(15, 42, 34, 0.12);
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 200ms ease;
+}
+
+.lp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 44px -18px rgba(15, 42, 34, 0.2);
+}
+
+.lp-widget {
+  background: var(--background);
+  border: 1px solid rgba(15, 42, 34, 0.06);
+  border-radius: 18px;
+}
+
+.lp-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--soft-lime);
+  color: var(--accent);
+}
+
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 15px;
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.lp-btn:hover {
+  transform: translateY(-2px);
+}
+
+.lp-btn:active {
+  transform: scale(0.98);
+}
+
+.lp-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 10px 24px -10px rgba(27, 125, 69, 0.55);
+}
+
+.lp-btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.lp-btn-outline {
+  background: #fff;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+}
+
+.lp-btn-outline:hover {
+  background: var(--soft-lime);
+}
+
+.lp-btn-lime {
+  background: var(--lime);
+  color: var(--foreground);
+  box-shadow: 0 10px 24px -10px rgba(215, 245, 107, 0.6);
+}
+
+.lp-btn-lime:hover {
+  background: #e2f985;
+}
+
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.lp-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 .page-transition {

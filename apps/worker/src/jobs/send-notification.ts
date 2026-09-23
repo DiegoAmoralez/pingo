@@ -5,6 +5,11 @@ import { alertKeyboard, dictionary, toBotLocale } from '@pingo/telegram-bot';
 
 const log = childLogger({ job: 'send-notification' });
 
+function isPermanentTelegramError(error: unknown): boolean {
+  const code = (error as { error_code?: number } | null)?.error_code;
+  return code === 400 || code === 403;
+}
+
 export async function processNotification(data: SendNotificationJob) {
   const event = await prisma.notificationEvent.findUnique({
     where: { id: data.notificationEventId },
@@ -35,7 +40,17 @@ export async function processNotification(data: SendNotificationJob) {
       ? alertKeyboard(dictionary(toBotLocale(connection?.locale)), event.monitorId)
       : undefined;
 
-  await sendTelegramMessage(chatId, text, { replyMarkup });
+  try {
+    await sendTelegramMessage(chatId, text, { replyMarkup });
+  } catch (error) {
+    // 400 "chat not found" / 403 "bot was blocked" never succeed on retry.
+    if (isPermanentTelegramError(error)) {
+      await prisma.notificationEvent.update({ where: { id: event.id }, data: { status: 'FAILED' } });
+      log.warn({ eventId: event.id, chatId, err: error }, 'telegram rejected the chat; marked FAILED');
+      return;
+    }
+    throw error;
+  }
   await prisma.notificationEvent.update({
     where: { id: event.id },
     data: { status: 'SENT', sentAt: new Date() },
