@@ -45,14 +45,21 @@ export async function setMaintenanceEnabled(enabled: boolean, updatedBy: string)
   return state;
 }
 
+/** Telegram Mini App routes: they render their own compact maintenance screen. */
+export function isTelegramMiniAppPath(pathname: string): boolean {
+  return pathname === '/tg' || pathname.startsWith('/tg/');
+}
+
 /**
- * Paths that keep working while maintenance is on: the admin panel itself
- * (so it can be switched off again) and machine endpoints.
+ * Paths the root layout must not replace with the site-wide maintenance
+ * screen: the admin panel (so the flag can be switched off again), machine
+ * endpoints, and the Mini App (its own layout shows a Telegram-sized screen).
  */
 export function isMaintenanceExempt(pathname: string): boolean {
   return (
     pathname === '/admin' ||
     pathname.startsWith('/admin/') ||
+    isTelegramMiniAppPath(pathname) ||
     pathname.startsWith('/api/health') ||
     pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/api/admin')

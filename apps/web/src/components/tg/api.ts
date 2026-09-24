@@ -118,8 +118,16 @@ export async function linkAccount(input: {
   return parse<Bootstrap>(response);
 }
 
-/** Authenticated API surface used by the Mini App. Mirrors the dashboard's REST routes. */
-export function createApi(token: string) {
+export function isMaintenanceError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 503 && error.code === 'MAINTENANCE';
+}
+
+/**
+ * Authenticated API surface used by the Mini App. Mirrors the dashboard's REST
+ * routes. `onMaintenance` fires when the server reports maintenance mode so an
+ * already-open app can swap to the maintenance screen.
+ */
+export function createApi(token: string, onMaintenance?: () => void) {
   const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
     const response = await fetch(path, {
       ...init,
@@ -129,7 +137,12 @@ export function createApi(token: string) {
         ...(init.headers ?? {}),
       },
     });
-    return parse<T>(response);
+    try {
+      return await parse<T>(response);
+    } catch (error) {
+      if (isMaintenanceError(error)) onMaintenance?.();
+      throw error;
+    }
   };
 
   return {

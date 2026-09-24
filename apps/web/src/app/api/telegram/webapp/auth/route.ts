@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@pingo/database';
 import { getUserPlan } from '@pingo/core';
+import { AppError } from '@pingo/shared';
 import { jsonError, rateLimit } from '@/lib/api';
+import { isMaintenanceEnabled } from '@/lib/maintenance';
 import { signWebAppToken, verifyTelegramInitData } from '@/lib/telegram-webapp';
 import { isLocale, type Locale } from '@/lib/i18n';
 
@@ -21,6 +23,9 @@ function localeFrom(value: string | undefined | null): Locale {
  */
 export async function POST(request: Request) {
   try {
+    if (await isMaintenanceEnabled()) {
+      throw new AppError('Site is under maintenance', 'MAINTENANCE', 503);
+    }
     const { initData } = bodySchema.parse(await request.json());
     const verified = verifyTelegramInitData(initData);
     const telegramUserId = String(verified.user.id);

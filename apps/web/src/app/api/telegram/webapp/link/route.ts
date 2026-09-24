@@ -6,6 +6,7 @@ import { getUserPlan } from '@pingo/core';
 import { AppError, emailSchema, trackEvent } from '@pingo/shared';
 import { auth } from '@/lib/auth';
 import { jsonError, rateLimit } from '@/lib/api';
+import { isMaintenanceEnabled } from '@/lib/maintenance';
 import { signWebAppToken, verifyTelegramInitData } from '@/lib/telegram-webapp';
 import { isLocale, type Locale } from '@/lib/i18n';
 
@@ -24,6 +25,9 @@ const bodySchema = z.object({
  */
 export async function POST(request: Request) {
   try {
+    if (await isMaintenanceEnabled()) {
+      throw new AppError('Site is under maintenance', 'MAINTENANCE', 503);
+    }
     const body = bodySchema.parse(await request.json());
     const verified = verifyTelegramInitData(body.initData);
     const telegramUserId = String(verified.user.id);

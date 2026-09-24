@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Locale } from '@/lib/i18n';
-import { bootstrap as bootstrapRequest, createApi, type Bootstrap } from './api';
+import { bootstrap as bootstrapRequest, createApi, isMaintenanceError, type Bootstrap } from './api';
 import { LoginScreen } from './login-screen';
+import { TelegramMaintenanceScreen } from './maintenance-screen';
 import { AddSiteScreen, SiteScreen, SitesScreen } from './screens-sites';
 import { IncidentsScreen, PlanScreen, SettingsScreen } from './screens-more';
 import { tgStrings } from './strings';
@@ -25,6 +26,7 @@ type Linked = Extract<Bootstrap, { status: 'linked' }>;
 type Phase =
   | { kind: 'loading' }
   | { kind: 'outside' }
+  | { kind: 'maintenance' }
   | { kind: 'error'; message: string }
   | { kind: 'unlinked'; initData: string; locale: Locale; startParam: string | null }
   | { kind: 'ready'; session: Linked };
@@ -78,7 +80,9 @@ export function TelegramMiniApp() {
           setPhase({ kind: 'unlinked', initData: app.initData, locale: result.locale, startParam: result.startParam });
         }
       })
-      .catch((error: Error) => setPhase({ kind: 'error', message: error.message }));
+      .catch((error: Error) =>
+        setPhase(isMaintenanceError(error) ? { kind: 'maintenance' } : { kind: 'error', message: error.message }),
+      );
   }, []);
 
   // Telegram's native back button mirrors our navigation stack.
@@ -100,7 +104,14 @@ export function TelegramMiniApp() {
     return () => app.BackButton.offClick(handler);
   }, [stack.length]);
 
-  const api = useMemo(() => (phase.kind === 'ready' ? createApi(phase.session.token) : null), [phase]);
+  const api = useMemo(
+    () => (phase.kind === 'ready' ? createApi(phase.session.token, () => setPhase({ kind: 'maintenance' })) : null),
+    [phase],
+  );
+
+  if (phase.kind === 'maintenance') {
+    return <TelegramMaintenanceScreen />;
+  }
 
   if (phase.kind === 'loading') {
     return (

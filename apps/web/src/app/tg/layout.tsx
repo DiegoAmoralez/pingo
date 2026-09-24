@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { isMaintenanceEnabled } from '@/lib/maintenance';
+import { TelegramMaintenanceScreen } from '@/components/tg/maintenance-screen';
 
 export const metadata: Metadata = {
   title: 'PingoGo',
@@ -16,12 +18,15 @@ export const viewport: Viewport = {
 /**
  * Telegram Mini App shell. No site header/footer: Telegram provides the chrome.
  * The SDK script must load before hydration so `window.Telegram.WebApp` exists.
+ * While the admin maintenance flag is on, the app is replaced by a compact
+ * Telegram-sized maintenance screen (the root layout skips /tg on purpose).
  */
-export default function TelegramLayout({ children }: { children: React.ReactNode }) {
+export default async function TelegramLayout({ children }: { children: React.ReactNode }) {
+  const maintenance = await isMaintenanceEnabled();
   return (
     <>
       <Script src="https://telegram.org/js/telegram-web-app.js?59" strategy="beforeInteractive" />
-      {children}
+      {maintenance ? <TelegramMaintenanceScreen /> : children}
     </>
   );
 }
