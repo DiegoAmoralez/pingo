@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Locale } from '@/lib/i18n';
-import { pick } from '@/lib/i18n';
+import { LOCALE_COOKIE, pick } from '@/lib/i18n';
 
 type LocaleContextValue = {
   locale: Locale;
@@ -34,7 +34,7 @@ export function LocaleProvider({ locale: serverLocale, children }: { locale: Loc
     (next: Locale) => {
       if (next === locale) return;
       setLocaleState(next);
-      document.cookie = `pingogo_locale=${next}; path=/; max-age=31536000; samesite=lax`;
+      document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
       document.documentElement.lang = next;
       startTransition(() => router.refresh());
     },

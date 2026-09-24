@@ -1,16 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { authClient } from '@/lib/auth-client';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { authClient, resendVerificationEmail } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { useLocale } from '@/components/locale-provider';
+import { VerifyEmailDialog } from '@/components/verify-email-dialog';
 
 export type SsoAvailability = {
   google: boolean;
   facebook: boolean;
 };
+
+const MIN_PASSWORD_LENGTH = 8;
+
+type RegisterStep = 'identity' | 'password';
+
+function isUnverifiedEmailError(error: { code?: string; status?: number; message?: string }): boolean {
+  return error.code === 'EMAIL_NOT_VERIFIED' || error.status === 403 || /not verified/i.test(error.message ?? '');
+}
 
 export function AuthForm({
   mode,
@@ -22,29 +32,85 @@ export function AuthForm({
   const { tr } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
+  const [step, setStep] = useState<RegisterStep>('identity');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<'google' | 'facebook' | null>(null);
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const showSso = mode !== 'forgot' && Boolean(sso?.google || sso?.facebook);
   const callbackURL = mode === 'register' ? '/onboarding' : '/dashboard';
+  const isRegister = mode === 'register';
+  const passwordsMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
 
-  async function onSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    if (isRegister && step === 'password') passwordRef.current?.focus();
+  }, [isRegister, step]);
+
+  const goToPasswordStep = () => {
+    setError(null);
+    if (!name.trim()) {
+      setError(tr('Tell us your name.', 'Укажите имя.'));
+      return;
+    }
+    setStep('password');
+  };
+
+  const goToIdentityStep = () => {
+    setError(null);
+    setStep('identity');
+  };
+
+  const resendVerification = async (target: string) => {
+    setResending(true);
     setError(null);
     setMessage(null);
     try {
-      if (mode === 'register') {
+      await resendVerificationEmail(target, '/onboarding');
+      setMessage(tr('Verification email sent. Check your inbox.', 'Письмо отправлено. Проверьте почту.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : tr('Could not send the email.', 'Не удалось отправить письмо.'));
+    } finally {
+      setResending(false);
+    }
+  };
+
+  async function onSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (isRegister && step === 'identity') {
+      goToPasswordStep();
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    setUnverifiedEmail(null);
+    try {
+      if (isRegister) {
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          throw new Error(tr(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, `Пароль — минимум ${MIN_PASSWORD_LENGTH} символов.`));
+        }
+        if (password !== passwordConfirm) {
+          throw new Error(tr('Passwords do not match.', 'Пароли не совпадают.'));
+        }
         const result = await authClient.signUp.email({
           email,
           password,
-          name: name || email.split('@')[0] || 'User',
+          name: name.trim(),
           callbackURL,
         });
         if (result.error) throw new Error(result.error.message);
+        // With email verification on, there is no session yet: show the "check your inbox" dialog.
+        if (!result.data?.token) {
+          setVerifyDialogOpen(true);
+          return;
+        }
         window.location.href = callbackURL;
         return;
       }
@@ -54,7 +120,13 @@ export function AuthForm({
           password,
           callbackURL,
         });
-        if (result.error) throw new Error(result.error.message);
+        if (result.error) {
+          if (isUnverifiedEmailError(result.error)) {
+            setUnverifiedEmail(email);
+            throw new Error(tr('Your email is not verified yet.', 'Email ещё не подтверждён.'));
+          }
+          throw new Error(result.error.message);
+        }
         window.location.href = callbackURL;
         return;
       }
@@ -86,44 +158,140 @@ export function AuthForm({
     }
   }
 
+  const submitLabel = loading
+    ? tr('Please wait…', 'Подождите…')
+    : mode === 'login'
+      ? tr('Sign in', 'Войти')
+      : isRegister
+        ? step === 'identity'
+          ? tr('Continue', 'Продолжить')
+          : tr('Create account', 'Создать аккаунт')
+        : tr('Send reset link', 'Отправить ссылку');
+
   return (
     <div className="space-y-4">
+      {isRegister ? (
+        <div className="flex items-center gap-3" aria-label={tr('Registration progress', 'Прогресс регистрации')}>
+          {(['identity', 'password'] as RegisterStep[]).map((item, index) => {
+            const reached = item === step || (item === 'identity' && step === 'password');
+            return (
+              <span key={item} className="flex flex-1 items-center gap-2">
+                <span
+                  className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-extrabold transition-colors duration-200 ease-out ${
+                    reached ? 'bg-accent text-white' : 'bg-soft-lime text-accent'
+                  }`}
+                  aria-current={item === step ? 'step' : undefined}
+                >
+                  {index + 1}
+                </span>
+                <span className={`text-xs font-bold uppercase tracking-[0.12em] ${item === step ? 'text-foreground' : 'text-muted'}`}>
+                  {item === 'identity' ? tr('About you', 'О вас') : tr('Password', 'Пароль')}
+                </span>
+                {index === 0 ? <span className={`ml-1 h-px flex-1 transition-colors duration-200 ${step === 'password' ? 'bg-accent' : 'bg-border'}`} aria-hidden /> : null}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
       <form onSubmit={onSubmit} className="space-y-4">
-        {mode === 'register' ? (
-          <div className="space-y-1">
-            <Label htmlFor="name">{tr('Name', 'Имя')}</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+        {isRegister && step === 'identity' ? (
+          <div key="identity" className="step-in space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="name">{tr('Name', 'Имя')}</Label>
+              <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" autoFocus />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            </div>
           </div>
         ) : null}
-        <div className="space-y-1">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-        </div>
-        {mode !== 'forgot' ? (
+
+        {isRegister && step === 'password' ? (
+          <div key="password" className="step-in space-y-4">
+            <button
+              type="button"
+              onClick={goToIdentityStep}
+              tabIndex={0}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition-colors duration-200 ease-out hover:text-accent"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              {tr('Back', 'Назад')} · <span className="font-mono text-xs">{email}</span>
+            </button>
+            <div className="space-y-1">
+              <Label htmlFor="password">{tr('Password', 'Пароль')}</Label>
+              <Input
+                id="password"
+                ref={passwordRef}
+                type="password"
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                aria-describedby="password-hint"
+              />
+              <p id="password-hint" className="text-xs text-muted">
+                {tr(`At least ${MIN_PASSWORD_LENGTH} characters.`, `Минимум ${MIN_PASSWORD_LENGTH} символов.`)}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="password-confirm">{tr('Repeat password', 'Повторите пароль')}</Label>
+              <Input
+                id="password-confirm"
+                type="password"
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                autoComplete="new-password"
+                aria-invalid={passwordsMismatch || undefined}
+                className={passwordsMismatch ? 'border-crit focus:border-crit focus-visible:ring-crit/20' : ''}
+              />
+              {passwordsMismatch ? <p className="text-xs font-semibold text-crit">{tr('Passwords do not match.', 'Пароли не совпадают.')}</p> : null}
+            </div>
+          </div>
+        ) : null}
+
+        {!isRegister ? (
+          <div className="space-y-1">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+          </div>
+        ) : null}
+        {mode === 'login' ? (
           <div className="space-y-1">
             <Label htmlFor="password">{tr('Password', 'Пароль')}</Label>
             <Input
               id="password"
               type="password"
               required
-              minLength={8}
+              minLength={MIN_PASSWORD_LENGTH}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              autoComplete="current-password"
             />
           </div>
         ) : null}
-        {error ? <p className="text-sm text-crit">{error}</p> : null}
-        {message ? <p className="text-sm text-ok">{message}</p> : null}
-        <Button className="w-full" disabled={loading || Boolean(ssoLoading)} type="submit">
-          {loading ? tr('Please wait…', 'Подождите…') : mode === 'login' ? tr('Sign in', 'Войти') : mode === 'register' ? tr('Create account', 'Создать аккаунт') : tr('Send reset link', 'Отправить ссылку')}
+
+        {error ? <p className="text-sm text-crit" role="alert">{error}</p> : null}
+        {message ? <p className="text-sm text-ok" role="status">{message}</p> : null}
+        {unverifiedEmail ? (
+          <div className="rounded-2xl bg-soft-lime/60 p-4">
+            <p className="text-sm text-foreground/80">
+              {tr('Open the verification email we sent to', 'Откройте письмо, которое мы отправили на')}{' '}
+              <span className="font-semibold">{unverifiedEmail}</span>. {tr("Can't find it?", 'Не нашли?')}
+            </p>
+            <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => resendVerification(unverifiedEmail)} disabled={resending}>
+              <RefreshCw className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} aria-hidden />
+              {resending ? tr('Sending…', 'Отправляем…') : tr('Send the email again', 'Отправить письмо ещё раз')}
+            </Button>
+          </div>
+        ) : null}
+
+        <Button className="w-full" disabled={loading || Boolean(ssoLoading) || (isRegister && step === 'password' && passwordsMismatch)} type="submit">
+          {submitLabel}
         </Button>
         {mode === 'login' ? (
           <p className="text-center text-sm text-muted">
@@ -131,6 +299,17 @@ export function AuthForm({
           </p>
         ) : null}
       </form>
+
+      {verifyDialogOpen ? (
+        <VerifyEmailDialog
+          email={email}
+          callbackURL={callbackURL}
+          onClose={() => {
+            setVerifyDialogOpen(false);
+            setMessage(tr('We sent a verification email. Open it to finish signing up.', 'Мы отправили письмо для подтверждения. Откройте его, чтобы завершить регистрацию.'));
+          }}
+        />
+      ) : null}
 
       {showSso ? (
         <div className="space-y-3">

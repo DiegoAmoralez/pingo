@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { isLocale } from '@/lib/i18n';
+import { LOCALE_COOKIE, isLocale } from '@/lib/i18n';
 import { COUNTRY_HEADERS, detectLocale } from '@/lib/locale-detect';
-
-export const LOCALE_COOKIE = 'pingogo_locale';
 
 /**
  * Server components cannot read the current URL or pick a language from

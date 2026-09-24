@@ -24,6 +24,7 @@ const envSchema = z.object({
   ADMIN_EMAIL: z.string().optional().default(''),
   ADMIN_PANEL_LOGIN: z.string().optional().default(''),
   ADMIN_PANEL_PASSWORD: z.string().optional().default(''),
+  REQUIRE_EMAIL_VERIFICATION: z.enum(['true', 'false']).optional(),
   MOCK_MONITORING: z
     .string()
     .optional()

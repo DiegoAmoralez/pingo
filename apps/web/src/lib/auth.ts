@@ -3,8 +3,28 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { nextCookies } from 'better-auth/next-js';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@pingo/database';
-import { getEmailProvider, resetPasswordEmail, verificationEmail } from '@pingo/email';
+import { getEmailProvider, resetPasswordEmail, verificationEmail, type EmailLocale } from '@pingo/email';
 import { trackEvent } from '@pingo/shared';
+import { LOCALE_COOKIE, isLocale } from './i18n';
+import { detectLocale } from './locale-detect';
+
+/** On in production by default; REQUIRE_EMAIL_VERIFICATION=true|false overrides (useful for local testing). */
+function requireEmailVerification(): boolean {
+  const override = process.env.REQUIRE_EMAIL_VERIFICATION;
+  if (override === 'true') return true;
+  if (override === 'false') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
+/** Language of the UI the request came from: saved cookie first, then browser language. */
+function requestLocale(request: Request | undefined): EmailLocale {
+  if (!request) return 'en';
+  const cookieHeader = request.headers.get('cookie') ?? '';
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`));
+  const saved = match?.[1] ? decodeURIComponent(match[1]) : null;
+  if (isLocale(saved)) return saved;
+  return detectLocale({ acceptLanguage: request.headers.get('accept-language') });
+}
 
 export const auth = betterAuth({
   appName: 'PINGO',
@@ -19,22 +39,22 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: process.env.NODE_ENV === 'production',
+    requireEmailVerification: requireEmailVerification(),
     minPasswordLength: 8,
     password: {
       hash: async (password) => bcrypt.hash(password, 12),
       verify: async ({ hash, password }) => bcrypt.compare(password, hash),
     },
-    sendResetPassword: async ({ user, url }) => {
-      const email = resetPasswordEmail(url);
+    sendResetPassword: async ({ user, url }, request) => {
+      const email = resetPasswordEmail(url, requestLocale(request));
       await getEmailProvider().send({ to: user.email, ...email });
     },
   },
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url }) => {
-      const email = verificationEmail(url);
+    sendVerificationEmail: async ({ user, url }, request) => {
+      const email = verificationEmail(url, requestLocale(request));
       await getEmailProvider().send({ to: user.email, ...email });
     },
   },

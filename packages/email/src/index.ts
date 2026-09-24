@@ -47,26 +47,12 @@ export function getEmailProvider(): EmailProvider {
   return cached;
 }
 
-export function verificationEmail(url: string) {
-  return {
-    subject: 'Verify your PINGO email',
-    html: `<p>Welcome to PINGO.</p><p><a href="${url}">Verify your email</a> to start monitoring.</p>`,
-    text: `Welcome to PINGO. Verify your email: ${url}`,
-  };
-}
-
-export function resetPasswordEmail(url: string) {
-  return {
-    subject: 'Reset your PINGO password',
-    html: `<p>Reset your password with this link:</p><p><a href="${url}">${url}</a></p><p>If you did not request this, you can ignore the email.</p>`,
-    text: `Reset your PINGO password: ${url}`,
-  };
-}
-
-export function paymentProblemEmail() {
-  return {
-    subject: 'PINGO payment failed',
-    html: `<p>We could not process your latest PINGO payment.</p><p>Update your billing details to keep paid monitoring active.</p>`,
-    text: 'We could not process your latest PINGO payment. Update your billing details to keep paid monitoring active.',
-  };
-}
+export {
+  paymentProblemEmail,
+  renderEmail,
+  resetPasswordEmail,
+  toEmailLocale,
+  verificationEmail,
+  type EmailLocale,
+  type RenderedEmail,
+} from './templates.js';

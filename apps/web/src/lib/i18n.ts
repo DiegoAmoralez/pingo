@@ -2,6 +2,9 @@ export type Locale = 'en' | 'ru';
 
 export const defaultLocale: Locale = 'en';
 
+/** Cookie that stores the visitor's chosen interface language. */
+export const LOCALE_COOKIE = 'pingogo_locale';
+
 export function isLocale(value: unknown): value is Locale {
   return value === 'en' || value === 'ru';
 }
