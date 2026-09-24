@@ -1,12 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { isLocale } from '@/lib/i18n';
+import { COUNTRY_HEADERS, detectLocale } from '@/lib/locale-detect';
+
+export const LOCALE_COOKIE = 'pingogo_locale';
 
 /**
- * Server components cannot read the current URL, so the root layout learns the
- * path from this header to decide whether to render the maintenance screen.
+ * Server components cannot read the current URL or pick a language from
+ * geo/Accept-Language on their own, so this middleware hands them:
+ * - `x-pathname`: used by the root layout for the maintenance screen;
+ * - `x-locale`:   detected language for visitors without a saved preference.
  */
 export function middleware(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.set('x-pathname', request.nextUrl.pathname);
+
+  const saved = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (!isLocale(saved)) {
+    const country = COUNTRY_HEADERS.map((name) => request.headers.get(name)).find(Boolean) ?? null;
+    headers.set(
+      'x-locale',
+      detectLocale({ country, acceptLanguage: request.headers.get('accept-language') }),
+    );
+  }
+
   return NextResponse.next({ request: { headers } });
 }
 
