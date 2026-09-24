@@ -9,6 +9,24 @@ import { logger } from '@pingo/shared';
  * open (site stays available) so an infra hiccup never locks users out.
  */
 const KEY = 'pingo:maintenance';
+/** The shared Redis client retries forever; cap the wait so pages never hang on a Redis outage. */
+const READ_TIMEOUT_MS = 1500;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`maintenance flag read timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 export type MaintenanceState = {
   enabled: boolean;
@@ -20,7 +38,7 @@ export type MaintenanceState = {
 
 export async function getMaintenanceState(): Promise<MaintenanceState> {
   try {
-    const raw = await getRedis().get(KEY);
+    const raw = await withTimeout(getRedis().get(KEY), READ_TIMEOUT_MS);
     if (!raw) return { enabled: false, updatedAt: null, updatedBy: null };
     const parsed = JSON.parse(raw) as Partial<MaintenanceState>;
     return {
