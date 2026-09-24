@@ -53,6 +53,8 @@ export async function POST(request: Request) {
         ? 'ru'
         : 'en';
 
+    // One Telegram belongs to one account: drop a stale link to a different account first.
+    await prisma.telegramConnection.deleteMany({ where: { telegramUserId, userId: { not: userId } } });
     // Private chat id equals the user id, which is what alerts are sent to.
     const connection = await prisma.telegramConnection.upsert({
       where: { userId },

@@ -111,6 +111,10 @@ async function connectAccount(ctx: BotContext, token: string) {
   const locale: BotLocale = ctx.session.locale;
   await prisma.$transaction([
     prisma.telegramConnectToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    // One Telegram belongs to one account: drop a stale link to a different account first.
+    prisma.telegramConnection.deleteMany({
+      where: { telegramUserId: String(ctx.from.id), userId: { not: record.userId } },
+    }),
     prisma.telegramConnection.upsert({
       where: { userId: record.userId },
       create: {

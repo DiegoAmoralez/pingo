@@ -24,6 +24,7 @@ import {
   simulateIncident,
   type SimulationStep,
 } from '@/server/simulate-incidents';
+import { createTelegramLinkToken, ensureTestAccount, isTestAccount, type EnsureTestAccountResult } from '@/server/test-account';
 
 export type LoginState = { error: string | null };
 
@@ -125,6 +126,45 @@ export async function simulateIncidentAction(raw: unknown): Promise<SimulationAc
       steps: [],
       notifications: await listRecentNotifications(input.userId),
     };
+  }
+}
+
+export type TestAccountActionResult =
+  | ({ ok: true; error: null } & EnsureTestAccountResult)
+  | { ok: false; error: string };
+
+/** Creates (or heals) the internal QA account and its sample monitors. */
+export async function ensureTestAccountAction(): Promise<TestAccountActionResult> {
+  const session = await getAdminSession();
+  if (!session) redirect('/admin');
+  try {
+    const result = await ensureTestAccount();
+    logger.info({ admin: session.login, created: result.created, monitorsAdded: result.monitorsAdded }, 'test account ensured');
+    revalidatePath('/admin');
+    return { ok: true, error: null, ...result };
+  } catch (error) {
+    logger.error({ err: error }, 'test account setup failed');
+    return { ok: false, error: error instanceof Error ? error.message : 'Could not create the test account.' };
+  }
+}
+
+export type TelegramLinkActionResult = { ok: true; url: string; expiresAt: string } | { ok: false; error: string };
+
+/** One-time bot deep link that binds a Telegram to the internal QA account. */
+export async function telegramLinkAction(userId: string): Promise<TelegramLinkActionResult> {
+  const session = await getAdminSession();
+  if (!session) redirect('/admin');
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (!user || !isTestAccount(user.email)) {
+    return { ok: false, error: 'Telegram linking from the admin panel is limited to the internal test account.' };
+  }
+  try {
+    const link = await createTelegramLinkToken(userId);
+    logger.info({ admin: session.login, userId }, 'test account telegram link issued');
+    return { ok: true, url: link.url, expiresAt: link.expiresAt.toISOString() };
+  } catch (error) {
+    logger.error({ err: error, userId }, 'test account telegram link failed');
+    return { ok: false, error: error instanceof Error ? error.message : 'Could not create the link.' };
   }
 }
 

@@ -1,16 +1,39 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
-import { AlertTriangle, CheckCircle2, Globe, Info, Lock, RefreshCw, Server, ShieldAlert, SkipForward, Zap } from 'lucide-react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  FlaskConical,
+  Globe,
+  Info,
+  Lock,
+  RefreshCw,
+  Send,
+  Server,
+  ShieldAlert,
+  SkipForward,
+  Zap,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/input';
 import { useLocale } from '@/components/locale-provider';
 import type { DownCause, SimulationScenario } from '@/server/simulate-incidents';
-import { recentNotificationsAction, simulateIncidentAction, type SimulationActionResult } from './actions';
+import {
+  ensureTestAccountAction,
+  recentNotificationsAction,
+  simulateIncidentAction,
+  telegramLinkAction,
+  type SimulationActionResult,
+  type TestAccountActionResult,
+} from './actions';
 
 export type SimulationTarget = {
   id: string;
   email: string;
+  internal: boolean;
   plan: string;
   telegram: string | null;
   alertLocale: 'en' | 'ru';
@@ -25,8 +48,11 @@ const selectClass =
 
 export function SimulationPanel({ targets }: { targets: SimulationTarget[] }) {
   const { tr } = useLocale();
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [userId, setUserId] = useState(targets.find((t) => t.monitors.length > 0)?.id ?? targets[0]?.id ?? '');
+  const [userId, setUserId] = useState(
+    targets.find((t) => t.internal)?.id ?? targets.find((t) => t.monitors.length > 0)?.id ?? targets[0]?.id ?? '',
+  );
   const account = useMemo(() => targets.find((t) => t.id === userId) ?? null, [targets, userId]);
   const [monitorId, setMonitorId] = useState(account?.monitors[0]?.id ?? '');
   const [scenario, setScenario] = useState<SimulationScenario>('down');
@@ -34,6 +60,60 @@ export function SimulationPanel({ targets }: { targets: SimulationTarget[] }) {
   const [sslDays, setSslDays] = useState<number>(7);
   const [domainDays, setDomainDays] = useState<number>(14);
   const [result, setResult] = useState<SimulationActionResult | null>(null);
+
+  const testAccount = useMemo(() => targets.find((t) => t.internal) ?? null, [targets]);
+  const [testPending, startTestTransition] = useTransition();
+  const [testResult, setTestResult] = useState<TestAccountActionResult | null>(null);
+  const [telegramLink, setTelegramLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Once the account shows up as linked, the one-time link is no longer needed.
+  useEffect(() => {
+    if (testAccount?.telegram) setTelegramLink(null);
+  }, [testAccount?.telegram]);
+
+  const handleCreateTestAccount = () => {
+    startTestTransition(async () => {
+      const response = await ensureTestAccountAction();
+      setTestResult(response);
+      if (response.ok) {
+        setUserId(response.userId);
+        setMonitorId('');
+        router.refresh();
+      }
+    });
+  };
+
+  const handleTelegramLink = () => {
+    if (!testAccount) return;
+    setLinkError(null);
+    startTestTransition(async () => {
+      const response = await telegramLinkAction(testAccount.id);
+      if (response.ok) {
+        setTelegramLink({ url: response.url, expiresAt: response.expiresAt });
+      } else {
+        setLinkError(response.error);
+      }
+    });
+  };
+
+  const handleCopyLink = async () => {
+    if (!telegramLink) return;
+    try {
+      await navigator.clipboard.writeText(telegramLink.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const handleCheckLinked = () => {
+    startTestTransition(() => {
+      router.refresh();
+    });
+  };
 
   const monitors = account?.monitors ?? [];
   const activeMonitorId = monitors.some((m) => m.id === monitorId) ? monitorId : (monitors[0]?.id ?? '');
@@ -95,12 +175,117 @@ export function SimulationPanel({ targets }: { targets: SimulationTarget[] }) {
         </span>
       </div>
 
+      <div className="mt-6 rounded-2xl border border-dashed border-accent/40 bg-soft-lime/30 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent text-white" aria-hidden>
+              <FlaskConical className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-sm font-bold">{tr('Internal test account', 'Внутренний тестовый аккаунт')}</p>
+              {testAccount ? (
+                <p className="mt-0.5 text-xs text-foreground/75">
+                  <span className="font-mono font-semibold">{testAccount.email}</span> · {testAccount.plan} · {testAccount.monitors.length}{' '}
+                  {tr('sites', 'сайт(ов)')} ·{' '}
+                  {testAccount.telegram ? (
+                    <span className="font-semibold text-accent">Telegram {testAccount.telegram}</span>
+                  ) : (
+                    <span className="font-semibold text-[#b56a00]">{tr('Telegram not linked', 'Telegram не привязан')}</span>
+                  )}
+                </p>
+              ) : (
+                <p className="mt-0.5 max-w-xl text-xs leading-5 text-foreground/75">
+                  {tr(
+                    'Creates qa@pingogo.internal on the PRO plan with three sample sites. Link your Telegram to it and every scenario lands in your chat without touching real customers.',
+                    'Создаёт qa@pingogo.internal на тарифе PRO с тремя сайтами. Привяжите к нему свой Telegram — и все сценарии придут в ваш чат, не задевая реальных клиентов.',
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {testAccount ? (
+              <>
+                {!testAccount.telegram ? (
+                  <Button type="button" size="sm" onClick={handleTelegramLink} disabled={testPending}>
+                    <Send className="h-4 w-4" aria-hidden />
+                    {tr('Link Telegram', 'Привязать Telegram')}
+                  </Button>
+                ) : null}
+                <Button type="button" size="sm" variant="ghost" onClick={handleCreateTestAccount} disabled={testPending}>
+                  <RefreshCw className={`h-4 w-4 ${testPending ? 'animate-spin' : ''}`} aria-hidden />
+                  {tr('Repair / add sites', 'Починить / добавить сайты')}
+                </Button>
+              </>
+            ) : (
+              <Button type="button" size="sm" onClick={handleCreateTestAccount} disabled={testPending}>
+                <FlaskConical className="h-4 w-4" aria-hidden />
+                {testPending ? tr('Creating…', 'Создаём…') : tr('Create test account', 'Создать тестовый аккаунт')}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {testResult && !testResult.ok ? (
+          <p className="mt-3 rounded-xl bg-crit/10 px-3 py-2 text-sm font-semibold text-crit">{testResult.error}</p>
+        ) : null}
+        {testResult?.ok && testResult.password ? (
+          <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm">
+            <p className="font-semibold">{tr('Dashboard password (shown once):', 'Пароль для входа в дашборд (показывается один раз):')}</p>
+            <p className="mt-1 font-mono text-base font-bold tracking-wide">{testResult.password}</p>
+            <p className="mt-1 text-xs text-muted">
+              {tr('Login', 'Логин')}: <span className="font-mono">{testResult.email}</span>
+            </p>
+          </div>
+        ) : null}
+        {testResult?.ok && !testResult.password && testResult.monitorsAdded.length > 0 ? (
+          <p className="mt-3 text-xs text-foreground/75">
+            {tr('Added sites', 'Добавлены сайты')}: {testResult.monitorsAdded.join(', ')}
+          </p>
+        ) : null}
+
+        {linkError ? <p className="mt-3 rounded-xl bg-crit/10 px-3 py-2 text-sm font-semibold text-crit">{linkError}</p> : null}
+        {telegramLink && testAccount && !testAccount.telegram ? (
+          <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm">
+            <p className="font-semibold">
+              {tr('Open this link in Telegram — the bot will link that Telegram to the test account.', 'Откройте ссылку в Telegram — бот привяжет этот Telegram к тестовому аккаунту.')}
+            </p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <a
+                href={telegramLink.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-w-0 flex-1 truncate font-mono text-xs text-accent underline-offset-2 hover:underline"
+              >
+                {telegramLink.url}
+              </a>
+              <Button type="button" size="sm" variant="ghost" onClick={handleCopyLink} aria-label={tr('Copy link', 'Скопировать ссылку')}>
+                <Copy className="h-4 w-4" aria-hidden />
+                {copied ? tr('Copied', 'Скопировано') : tr('Copy', 'Копировать')}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={handleCheckLinked} disabled={testPending}>
+                <RefreshCw className={`h-4 w-4 ${testPending ? 'animate-spin' : ''}`} aria-hidden />
+                {tr('I linked it', 'Я привязал')}
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              {tr('Valid until', 'Действует до')} {new Date(telegramLink.expiresAt).toLocaleTimeString()}.{' '}
+              {tr(
+                'If this Telegram is linked to another account, the bot will move it to the test account.',
+                'Если этот Telegram привязан к другому аккаунту, бот перепривяжет его к тестовому.',
+              )}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div>
           <Label htmlFor="sim-account">{tr('Account', 'Аккаунт')}</Label>
           <select id="sim-account" className={selectClass} value={userId} onChange={handleAccountChange} disabled={pending}>
             {targets.map((t) => (
               <option key={t.id} value={t.id}>
+                {t.internal ? `[${tr('TEST', 'ТЕСТ')}] ` : ''}
                 {t.email} · {t.plan} · {t.monitors.length} {tr('sites', 'сайт(ов)')} · {t.telegram ? `TG ${t.telegram}` : tr('no Telegram', 'без Telegram')}
               </option>
             ))}

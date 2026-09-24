@@ -22,6 +22,7 @@ import {
   websiteDownMessage,
   websiteRecoveredMessage,
 } from '@pingo/notifications';
+import { isTestAccount } from './test-account';
 
 /**
  * Admin-only incident simulator.
@@ -406,6 +407,7 @@ export async function listSimulationTargets() {
   return users.map((user) => ({
     id: user.id,
     email: user.email,
+    internal: isTestAccount(user.email),
     plan: user.subscription?.plan ?? 'FREE',
     telegram: user.telegram ? (user.telegram.username ? `@${user.telegram.username}` : 'linked') : null,
     alertLocale: toAlertLocale(user.telegram?.locale),
