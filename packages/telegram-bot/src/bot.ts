@@ -158,6 +158,18 @@ export async function registerBotCommands(bot: Bot<BotContext>) {
 }
 
 export async function startPingoPolling(bot: Bot<BotContext>) {
+  // grammY's polling unregisters any webhook first. If this token is live in
+  // production (webhook set), a local worker would silently hijack the bot and
+  // its menu button, so refuse instead of taking over.
+  const webhook = await bot.api.getWebhookInfo().catch(() => null);
+  if (webhook?.url) {
+    logger.error(
+      { webhookUrl: webhook.url },
+      'telegram polling skipped: this bot token already has a webhook (production). Use a separate dev bot token or set TELEGRAM_WEBHOOK_SECRET.',
+    );
+    return;
+  }
+
   await registerBotCommands(bot).catch((error) =>
     logger.warn({ err: error }, 'could not register telegram commands'),
   );
