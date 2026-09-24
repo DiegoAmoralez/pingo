@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { AdminLoginForm } from './login-form';
 import { MaintenanceToggle } from './maintenance-toggle';
 import { AdminStats } from './admin-stats';
+import { SimulationPanel } from './simulation-panel';
+import { listSimulationTargets } from '@/server/simulate-incidents';
 import { logoutAction } from './actions';
 
 export const metadata: Metadata = {
@@ -58,7 +60,7 @@ export default async function AdminPage() {
     );
   }
 
-  const maintenance = await getMaintenanceState();
+  const [maintenance, simulationTargets] = await Promise.all([getMaintenanceState(), listSimulationTargets()]);
   const changedAt = maintenance.updatedAt
     ? new Date(maintenance.updatedAt).toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-GB')
     : null;
@@ -118,6 +120,8 @@ export default async function AdminPage() {
             <MaintenanceToggle enabled={maintenance.enabled} />
           </div>
         </section>
+
+        <SimulationPanel targets={simulationTargets} />
 
         <AdminStats locale={locale} />
       </div>
