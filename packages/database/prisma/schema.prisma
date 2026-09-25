@@ -148,6 +148,8 @@ model Subscription {
   userId                 String             @unique
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider               String             @default("stripe")
+  /// Stripe world the row belongs to: "live" | "test"; null for manual grants.
+  providerMode           String?
   providerCustomerId     String?
   providerSubscriptionId String?
   plan                   PlanCode           @default(FREE)
@@ -158,6 +160,7 @@ model Subscription {
   updatedAt              DateTime           @updatedAt
 
   @@index([plan, status])
+  @@index([providerMode])
 }
 
 model Monitor {

@@ -1,4 +1,5 @@
 import { prisma } from '@pingo/database';
+import { getStripeMode, subscriptionAppliesToMode, type StripeMode } from '@pingo/billing';
 import {
   MANUAL_CHECK_COOLDOWN_SECONDS,
   PlanLimitError,
@@ -18,9 +19,21 @@ import {
 } from '@pingo/monitoring';
 import { assertOwned } from './access.js';
 
-export async function getUserPlan(userId: string): Promise<PlanCode> {
-  const sub = await prisma.subscription.findUnique({ where: { userId } });
+type SubscriptionLike = {
+  plan: PlanCode;
+  status: string;
+  currentPeriodEnd: Date | null;
+  providerMode: string | null;
+};
+
+/**
+ * Plan a subscription row grants right now. A row from the Stripe world that
+ * is not active (e.g. a sandbox subscription while live mode is on) grants
+ * nothing — but it is kept, so switching back restores it.
+ */
+export function effectivePlan(sub: SubscriptionLike | null | undefined, mode: StripeMode | null): PlanCode {
   if (!sub) return 'FREE';
+  if (!subscriptionAppliesToMode(sub, mode)) return 'FREE';
   if (sub.status === 'CANCELED' && sub.currentPeriodEnd && sub.currentPeriodEnd < new Date()) {
     return 'FREE';
   }
@@ -28,6 +41,11 @@ export async function getUserPlan(userId: string): Promise<PlanCode> {
     return sub.plan;
   }
   return 'FREE';
+}
+
+export async function getUserPlan(userId: string): Promise<PlanCode> {
+  const [sub, mode] = await Promise.all([prisma.subscription.findUnique({ where: { userId } }), getStripeMode()]);
+  return effectivePlan(sub, mode);
 }
 
 export async function createMonitor(userId: string, input: AddMonitorInput) {

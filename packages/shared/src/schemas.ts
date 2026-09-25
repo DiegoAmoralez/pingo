@@ -62,6 +62,8 @@ export const profileSchema = z.object({
 
 export const checkoutSchema = z.object({
   plan: z.enum(['PERSONAL', 'PRO', 'AGENCY']),
+  /** Where the checkout was started from; shows up in Stripe metadata. */
+  source: z.enum(['web', 'bot', 'miniapp']).optional(),
 });
 
 export const telegramAddSchema = z.object({

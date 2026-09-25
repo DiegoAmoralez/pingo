@@ -9,6 +9,13 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional().default(''),
   TELEGRAM_BOT_USERNAME: z.string().optional().default('PingoMonitorBot'),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional().default(''),
+  // Stripe: one key set per world; the admin panel switches between them.
+  STRIPE_LIVE_SECRET_KEY: z.string().optional().default(''),
+  STRIPE_LIVE_WEBHOOK_SECRET: z.string().optional().default(''),
+  STRIPE_TEST_SECRET_KEY: z.string().optional().default(''),
+  STRIPE_TEST_WEBHOOK_SECRET: z.string().optional().default(''),
+  STRIPE_DEFAULT_MODE: z.enum(['live', 'test']).optional(),
+  // Legacy single-mode variables (mapped to live/test by key prefix).
   STRIPE_SECRET_KEY: z.string().optional().default(''),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(''),
   STRIPE_PRICE_PERSONAL: z.string().optional().default(''),

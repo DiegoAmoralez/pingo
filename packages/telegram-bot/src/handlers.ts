@@ -13,9 +13,9 @@ import {
   updateMonitor,
   type NotificationPreferenceKey,
 } from '@pingo/core';
-import { getBillingProvider } from '@pingo/billing';
+import { getBillingProvider, isPaidPlan } from '@pingo/billing';
 import { testNotificationKey } from '@pingo/monitoring';
-import { AppError, RateLimitError, logger, trackEvent, type PlanCode } from '@pingo/shared';
+import { AppError, RateLimitError, logger, trackEvent } from '@pingo/shared';
 import { enqueueNotification } from '@pingo/shared/jobs';
 import { dictionary, toBotLocale, type BotLocale } from './i18n.js';
 import { escapeHtml } from './format.js';
@@ -353,17 +353,21 @@ export async function showPlan(ctx: BotContext) {
   const session = await requireLinked(ctx);
   if (!session) return;
   await acknowledge(ctx);
-  const activeMonitors = await prisma.monitor.count({
-    where: { userId: session.user.id, pausedAt: null },
-  });
-  const billing = getBillingProvider();
+  const [activeMonitors, billing] = await Promise.all([
+    prisma.monitor.count({ where: { userId: session.user.id, pausedAt: null } }),
+    getBillingProvider(),
+  ]);
+  const sub = session.user.subscription;
+  // A billing profile only counts in the Stripe world that is active right now.
+  const hasCustomer = Boolean(billing && sub?.providerCustomerId && sub.providerMode === billing.mode);
+  const text = renderPlan(view(ctx), { plan: session.plan, activeMonitors, subscription: sub });
   await showScreen(
     ctx,
-    renderPlan(view(ctx), { plan: session.plan, activeMonitors, subscription: session.user.subscription }),
+    billing?.isSandbox ? `${text}\n\n${escapeHtml(session.t.sandboxNotice)}` : text,
     planKeyboard(session.t, {
       upgrades: upgradeOptions(session.plan),
       billingConfigured: Boolean(billing),
-      hasCustomer: Boolean(session.user.subscription?.providerCustomerId),
+      hasCustomer,
     }),
   );
 }
@@ -371,22 +375,24 @@ export async function showPlan(ctx: BotContext) {
 export async function startCheckout(ctx: BotContext, planCode: string) {
   const session = await requireLinked(ctx);
   if (!session) return;
-  const billing = getBillingProvider();
-  const plan = planCode as PlanCode;
-  if (!billing || plan === 'FREE' || !['PERSONAL', 'PRO', 'AGENCY'].includes(plan)) {
+  const billing = await getBillingProvider();
+  if (!billing || !isPaidPlan(planCode)) {
     await acknowledge(ctx, session.t.billingUnavailable);
     return;
   }
+  const plan = planCode;
+  const sub = session.user.subscription;
   try {
     const checkout = await billing.createCheckoutSession({
       userId: session.user.id,
       email: session.user.email,
       plan,
-      customerId: session.user.subscription?.providerCustomerId,
-      successUrl: appUrl('/settings?tab=billing'),
-      cancelUrl: appUrl('/settings?tab=billing'),
+      customerId: sub?.providerMode === billing.mode ? sub.providerCustomerId : null,
+      successUrl: appUrl('/settings?tab=billing&checkout=success'),
+      cancelUrl: appUrl('/settings?tab=billing&checkout=cancel'),
+      source: 'bot',
     });
-    await trackEvent('checkout_started', { plan, source: 'bot' }, session.user.id);
+    await trackEvent('checkout_started', { plan, source: 'bot', mode: billing.mode }, session.user.id);
     await acknowledge(ctx);
     const name = upgradeOptions('FREE').find((p) => p.code === plan)?.name ?? plan;
     await showScreen(ctx, escapeHtml(session.t.checkoutReady(name)), checkoutKeyboard(session.t, checkout.url));
@@ -399,8 +405,9 @@ export async function startCheckout(ctx: BotContext, planCode: string) {
 export async function openBillingPortal(ctx: BotContext) {
   const session = await requireLinked(ctx);
   if (!session) return;
-  const billing = getBillingProvider();
-  const customerId = session.user.subscription?.providerCustomerId;
+  const billing = await getBillingProvider();
+  const sub = session.user.subscription;
+  const customerId = billing && sub?.providerMode === billing.mode ? sub.providerCustomerId : null;
   if (!billing || !customerId) {
     await acknowledge(ctx, session.t.billingUnavailable);
     return;

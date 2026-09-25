@@ -122,6 +122,7 @@ const en = {
   checkoutReady: (name: string) => `Tap the button to pay for ${name}. You return to PingoGo when done.`,
   payNow: '💳 Pay',
   billingUnavailable: 'Payments are not configured on this server. Open PingoGo to manage your plan.',
+  sandboxNotice: '🧪 Sandbox mode: no real charges. Test card 4242 4242 4242 4242.',
   // Account
   accountTitle: '👤 Account',
   email: 'Email',
@@ -282,6 +283,7 @@ const ru: Dictionary = {
   checkoutReady: (name: string) => `Нажмите кнопку, чтобы оплатить тариф ${name}. После оплаты вы вернётесь в PingoGo.`,
   payNow: '💳 Оплатить',
   billingUnavailable: 'Оплата на этом сервере не настроена. Откройте PingoGo, чтобы управлять тарифом.',
+  sandboxNotice: '🧪 Тестовый режим: реальных списаний нет. Тестовая карта 4242 4242 4242 4242.',
   accountTitle: '👤 Аккаунт',
   email: 'Email',
   name: 'Имя',

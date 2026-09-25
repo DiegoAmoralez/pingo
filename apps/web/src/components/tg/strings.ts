@@ -109,6 +109,7 @@ const en = {
   manageBilling: 'Manage billing',
   billingUnavailable: 'Payments are not configured yet. Open the dashboard to change your plan.',
   openingCheckout: 'Opening payment…',
+  sandboxNotice: 'Sandbox mode: no real charges. Test card 4242 4242 4242 4242.',
   // Misc
   error: 'Something went wrong.',
   saved: 'Saved',
@@ -216,6 +217,7 @@ const ru: TgStrings = {
   manageBilling: 'Управление оплатой',
   billingUnavailable: 'Оплата пока не настроена. Откройте дашборд, чтобы сменить тариф.',
   openingCheckout: 'Открываем оплату…',
+  sandboxNotice: 'Тестовый режим: реальных списаний нет. Тестовая карта 4242 4242 4242 4242.',
   error: 'Что-то пошло не так.',
   saved: 'Сохранено',
 };

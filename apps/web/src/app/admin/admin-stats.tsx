@@ -1,5 +1,6 @@
 import { prisma } from '@pingo/database';
 import { getPlan } from '@pingo/shared';
+import { getStripeMode, subscriptionAppliesToMode } from '@pingo/billing';
 import { MetricCard } from '@/components/app-primitives';
 import { pick, type Locale } from '@/lib/i18n';
 
@@ -11,11 +12,12 @@ export async function AdminStats({ locale }: { locale: Locale }) {
   const d30 = new Date(now.getTime() - 30 * 86400000);
   const h24 = new Date(now.getTime() - 86400000);
 
+  const stripeMode = await getStripeMode();
   const [
     users,
     new7,
     new30,
-    paid,
+    paidRows,
     monitors,
     incidents24,
     telegram,
@@ -33,6 +35,8 @@ export async function AdminStats({ locale }: { locale: Locale }) {
     prisma.notificationEvent.count({ where: { status: 'FAILED', createdAt: { gte: h24 } } }),
   ]);
 
+  // Only subscriptions from the active Stripe world count as revenue.
+  const paid = paidRows.filter((sub) => subscriptionAppliesToMode(sub, stripeMode));
   const mrr = paid.reduce((sum, sub) => sum + getPlan(sub.plan).monthlyPriceCents, 0) / 100;
   const allUsers = await prisma.user.findMany({
     include: { subscription: true, _count: { select: { monitors: true } } },
@@ -82,7 +86,23 @@ export async function AdminStats({ locale }: { locale: Locale }) {
               {allUsers.map((row) => (
                 <tr key={row.id} className="border-t border-border">
                   <td className="py-2">{row.email}</td>
-                  <td>{row.subscription?.plan ?? 'FREE'}</td>
+                  <td>
+                    {row.subscription?.plan ?? 'FREE'}
+                    {row.subscription?.providerMode ? (
+                      <span
+                        className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] ${
+                          subscriptionAppliesToMode(row.subscription, stripeMode) ? 'bg-soft-lime text-accent' : 'bg-border text-muted line-through'
+                        }`}
+                        title={
+                          subscriptionAppliesToMode(row.subscription, stripeMode)
+                            ? undefined
+                            : t('Inactive: belongs to the other Stripe mode', 'Не действует: из другого режима Stripe')
+                        }
+                      >
+                        {row.subscription.providerMode}
+                      </span>
+                    ) : null}
+                  </td>
                   <td>{row._count.monitors}</td>
                   <td>{row.subscription?.status ?? 'NONE'}</td>
                   <td>{row.createdAt.toISOString().slice(0, 10)}</td>

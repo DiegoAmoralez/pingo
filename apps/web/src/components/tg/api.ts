@@ -50,7 +50,14 @@ export type AccountInfo = {
   user: { name: string; email: string; timezone: string };
   telegram: { connected: boolean; username: string | null };
   preferences: Preferences;
-  subscription: { plan: PlanCode; status: string };
+  subscription: {
+    plan: PlanCode;
+    status: string;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    hasBillingProfile: boolean;
+  };
+  billing: { mode: 'live' | 'test' | null };
 };
 
 export type PlanCode = 'FREE' | 'PERSONAL' | 'PRO' | 'AGENCY';
@@ -166,7 +173,10 @@ export function createApi(token: string, onMaintenance?: () => void) {
     sendTest: () => request<{ ok: true }>('/api/telegram/test', { method: 'POST' }),
     listPlans: () => request<{ plans: PlanDefinition[] }>('/api/plans'),
     checkout: (plan: Exclude<PlanCode, 'FREE'>) =>
-      request<{ url: string }>('/api/billing/checkout', { method: 'POST', body: JSON.stringify({ plan }) }),
+      request<{ url: string }>('/api/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ plan, source: 'miniapp' }),
+      }),
     portal: () => request<{ url: string }>('/api/billing/portal', { method: 'POST' }),
   };
 }

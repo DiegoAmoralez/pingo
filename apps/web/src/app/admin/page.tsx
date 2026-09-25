@@ -13,7 +13,9 @@ import { AdminLoginForm } from './login-form';
 import { MaintenanceToggle } from './maintenance-toggle';
 import { AdminStats } from './admin-stats';
 import { SimulationPanel } from './simulation-panel';
+import { StripePanel } from './stripe-panel';
 import { listSimulationTargets } from '@/server/simulate-incidents';
+import { getStripeOverview } from '@/server/stripe-admin';
 import { logoutAction } from './actions';
 
 export const metadata: Metadata = {
@@ -60,7 +62,11 @@ export default async function AdminPage() {
     );
   }
 
-  const [maintenance, simulationTargets] = await Promise.all([getMaintenanceState(), listSimulationTargets()]);
+  const [maintenance, simulationTargets, stripeOverview] = await Promise.all([
+    getMaintenanceState(),
+    listSimulationTargets(),
+    getStripeOverview(),
+  ]);
   const changedAt = maintenance.updatedAt
     ? new Date(maintenance.updatedAt).toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-GB')
     : null;
@@ -120,6 +126,8 @@ export default async function AdminPage() {
             <MaintenanceToggle enabled={maintenance.enabled} />
           </div>
         </section>
+
+        <StripePanel overview={stripeOverview} />
 
         <SimulationPanel targets={simulationTargets} />
 

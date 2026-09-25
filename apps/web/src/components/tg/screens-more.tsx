@@ -298,12 +298,16 @@ export function PlanScreen({ api, t }: ScreenProps) {
   const price = (cents: number) => (cents === 0 ? '$0' : `$${(cents / 100).toFixed(2)}`);
   const order: PlanCode[] = ['FREE', 'PERSONAL', 'PRO', 'AGENCY'];
   const paid = order.indexOf(currentCode) > 0;
+  const billingMode = account.billing?.mode ?? null;
+  // An existing subscription is changed in the Customer Portal, not by a second Checkout.
+  const changeViaPortal = paid && account.subscription.hasBillingProfile;
 
   return (
     <div className="tg-screen pt-2">
       <div className="mb-3 px-4">
         <h1 className="text-[26px] font-extrabold tracking-tight">{t.planTitle}</h1>
       </div>
+      {billingMode === 'test' ? <Banner>{t.sandboxNotice}</Banner> : null}
       {notice ? <Banner>{notice}</Banner> : null}
 
       <Section title={t.currentPlan}>
@@ -311,7 +315,9 @@ export function PlanScreen({ api, t }: ScreenProps) {
         <Row label={t.sitesUsed} value={`${activeCount}/${current.maxMonitors}`} />
         <Row label={t.minInterval} value={t.minutes(Math.round(current.minCheckIntervalSeconds / 60))} />
         <Row label={t.history} value={t.historyDays(current.historyDays)} />
-        {paid ? <Row label={t.manageBilling} onClick={busy ? undefined : handlePortal} /> : null}
+        {account.subscription.hasBillingProfile ? (
+          <Row label={t.manageBilling} onClick={busy ? undefined : handlePortal} />
+        ) : null}
       </Section>
 
       <Section title={t.upgrade}>
@@ -331,7 +337,11 @@ export function PlanScreen({ api, t }: ScreenProps) {
                 {t.sitesCount(plan.maxMonitors)} · {t.minutes(Math.round(plan.minCheckIntervalSeconds / 60))} ·{' '}
                 {t.historyDays(plan.historyDays)}
               </p>
-              <PrimaryButton className="mt-3 h-10" disabled={busy !== null} onClick={() => handleUpgrade(plan.code)}>
+              <PrimaryButton
+                className="mt-3 h-10"
+                disabled={busy !== null || billingMode === null}
+                onClick={() => (changeViaPortal ? handlePortal() : handleUpgrade(plan.code))}
+              >
                 {t.upgrade} → {plan.name}
               </PrimaryButton>
             </div>

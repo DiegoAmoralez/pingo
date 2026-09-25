@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { PageHeader, ConfirmDialog } from '@/components/app-primitives';
 import { useLocale } from '@/components/locale-provider';
+import { BillingPanel, type BillingSubscription } from '@/components/billing-panel';
 
 type SettingsPayload = {
   user: { name: string; email: string; timezone: string };
@@ -17,7 +18,8 @@ type SettingsPayload = {
     domainExpiration: boolean;
     dnsChanges: boolean;
   };
-  subscription: { plan: string; status: string };
+  subscription: BillingSubscription;
+  billing: { mode: 'live' | 'test' | null };
 };
 
 const TABS = ['profile', 'notifications', 'telegram', 'billing', 'security'] as const;
@@ -44,8 +46,6 @@ function SettingsInner() {
   const initialTab = searchParams.get('tab');
   const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : 'profile');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [billingError, setBillingError] = useState<string | null>(null);
-  const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [testState, setTestState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [testError, setTestError] = useState<string | null>(null);
 
@@ -65,14 +65,14 @@ function SettingsInner() {
     }
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     const response = await fetch('/api/settings');
     setData(await response.json());
-  }
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     const next = searchParams.get('tab');
@@ -92,19 +92,6 @@ function SettingsInner() {
     telegram: 'Telegram',
     billing: tr('Billing', 'Оплата'),
     security: tr('Security', 'Безопасность'),
-  };
-  const planLabel: Record<string, string> = {
-    FREE: tr('Free', 'Бесплатный'),
-    PERSONAL: tr('Personal', 'Личный'),
-    PRO: tr('Pro', 'Профессиональный'),
-    AGENCY: tr('Agency', 'Агентство'),
-  };
-  const statusLabel: Record<string, string> = {
-    ACTIVE: tr('Active', 'Активен'),
-    TRIALING: tr('Trial', 'Пробный период'),
-    PAST_DUE: tr('Past due', 'Просрочен'),
-    CANCELED: tr('Canceled', 'Отменён'),
-    INCOMPLETE: tr('Incomplete', 'Не завершён'),
   };
 
   return (
@@ -241,69 +228,7 @@ function SettingsInner() {
         ) : null}
 
         {tab === 'billing' ? (
-          <div className="brand-card max-w-2xl space-y-4 rounded-3xl p-6 sm:p-8">
-            <p>
-              {tr('Current plan:', 'Текущий тариф:')} <strong>{planLabel[data.subscription.plan] ?? data.subscription.plan}</strong>
-            </p>
-            <p className="text-sm text-muted">{tr('Status:', 'Статус:')} {statusLabel[data.subscription.status] ?? data.subscription.status}</p>
-            <p className="text-sm text-muted">
-              {tr('Stripe test mode. Card', 'Тестовый режим Stripe. Карта')} <code>4242 4242 4242 4242</code>, {tr('any future date, any CVC.', 'любая будущая дата и любой CVC.')}
-            </p>
-            {billingError ? <p className="text-sm text-crit">{billingError}</p> : null}
-            <div className="flex flex-wrap gap-2">
-              {(['PERSONAL', 'PRO', 'AGENCY'] as const).map((plan) => (
-                <Button
-                  key={plan}
-                  type="button"
-                  variant="secondary"
-                  disabled={Boolean(billingLoading)}
-                  onClick={async () => {
-                    setBillingError(null);
-                    setBillingLoading(plan);
-                    try {
-                      const response = await fetch('/api/billing/checkout', {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ plan }),
-                      });
-                      const json = await response.json();
-                      if (json.url) {
-                        window.location.href = json.url;
-                        return;
-                      }
-                      setBillingError(json.error ?? tr('Checkout is not available yet.', 'Оплата пока недоступна.'));
-                    } finally {
-                      setBillingLoading(null);
-                    }
-                  }}
-                >
-                  {billingLoading === plan ? tr('Opening Stripe…', 'Открываем Stripe…') : `${tr('Upgrade to', 'Перейти на')} ${plan}`}
-                </Button>
-              ))}
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={Boolean(billingLoading)}
-                onClick={async () => {
-                  setBillingError(null);
-                  setBillingLoading('portal');
-                  try {
-                    const response = await fetch('/api/billing/portal', { method: 'POST' });
-                    const json = await response.json();
-                    if (json.url) {
-                      window.location.href = json.url;
-                      return;
-                    }
-                    setBillingError(json.error ?? tr('Billing portal is not available yet.', 'Платёжный портал пока недоступен.'));
-                  } finally {
-                    setBillingLoading(null);
-                  }
-                }}
-              >
-                {billingLoading === 'portal' ? tr('Opening…', 'Открываем…') : tr('Manage billing', 'Управлять оплатой')}
-              </Button>
-            </div>
-          </div>
+          <BillingPanel subscription={data.subscription} mode={data.billing.mode} onRefresh={load} />
         ) : null}
 
         {tab === 'security' ? (

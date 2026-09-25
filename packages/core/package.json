@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@pingo/billing": "workspace:*",
     "@pingo/database": "workspace:*",
     "@pingo/monitoring": "workspace:*",
     "@pingo/shared": "workspace:*"

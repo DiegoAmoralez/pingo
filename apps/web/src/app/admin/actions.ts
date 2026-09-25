@@ -14,7 +14,9 @@ import {
   verifyAdminCredentials,
 } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/api';
+import { getBillingProviderForMode, isStripeMode, setStripeMode } from '@pingo/billing';
 import { setMaintenanceEnabled } from '@/lib/maintenance';
+import { stripeWebhookUrl } from '@/lib/billing-urls';
 import { getLocale } from '@/lib/i18n-server';
 import { pick } from '@/lib/i18n';
 import {
@@ -165,6 +167,74 @@ export async function telegramLinkAction(userId: string): Promise<TelegramLinkAc
   } catch (error) {
     logger.error({ err: error, userId }, 'test account telegram link failed');
     return { ok: false, error: error instanceof Error ? error.message : 'Could not create the link.' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stripe: live ⇄ sandbox
+// ---------------------------------------------------------------------------
+
+export type StripeActionResult = { ok: true; message: string; secret?: string } | { ok: false; error: string };
+
+/** Switches which Stripe world checkout, the portal and plan checks use. */
+export async function setStripeModeAction(mode: unknown): Promise<StripeActionResult> {
+  const session = await getAdminSession();
+  if (!session) redirect('/admin');
+  if (!isStripeMode(mode)) return { ok: false, error: 'Unknown Stripe mode.' };
+  try {
+    await setStripeMode(mode, session.login);
+    // Plans are derived from the mode on every request; drop cached pages.
+    revalidatePath('/', 'layout');
+    return { ok: true, message: mode === 'live' ? 'Live mode is on. Real cards are charged.' : 'Sandbox mode is on.' };
+  } catch (error) {
+    logger.error({ err: error, mode }, 'stripe mode switch failed');
+    return { ok: false, error: error instanceof Error ? error.message : 'Could not switch the mode.' };
+  }
+}
+
+/** Creates products, monthly prices and the Customer Portal configuration in one Stripe world. */
+export async function setupStripeCatalogAction(mode: unknown): Promise<StripeActionResult> {
+  const session = await getAdminSession();
+  if (!session) redirect('/admin');
+  if (!isStripeMode(mode)) return { ok: false, error: 'Unknown Stripe mode.' };
+  const provider = getBillingProviderForMode(mode);
+  if (!provider) return { ok: false, error: `No secret key for ${mode} mode.` };
+  try {
+    const result = await provider.ensureCatalog();
+    const created = result.prices.filter((price) => price.created).length;
+    logger.info({ admin: session.login, mode, created }, 'stripe catalog setup from admin');
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message:
+        created > 0
+          ? `${created} price(s) created, ${result.prices.length - created} already existed.`
+          : 'Catalog is up to date.',
+    };
+  } catch (error) {
+    logger.error({ err: error, mode }, 'stripe catalog setup failed');
+    return { ok: false, error: error instanceof Error ? error.message : 'Stripe rejected the request.' };
+  }
+}
+
+/** Registers our webhook URL in one Stripe world; the signing secret is shown once. */
+export async function setupStripeWebhookAction(mode: unknown): Promise<StripeActionResult> {
+  const session = await getAdminSession();
+  if (!session) redirect('/admin');
+  if (!isStripeMode(mode)) return { ok: false, error: 'Unknown Stripe mode.' };
+  const provider = getBillingProviderForMode(mode);
+  if (!provider) return { ok: false, error: `No secret key for ${mode} mode.` };
+  try {
+    const result = await provider.ensureWebhookEndpoint(stripeWebhookUrl());
+    logger.info({ admin: session.login, mode, created: result.created }, 'stripe webhook setup from admin');
+    revalidatePath('/admin');
+    if (result.created && result.secret) {
+      return { ok: true, message: 'Webhook endpoint created.', secret: result.secret };
+    }
+    return { ok: true, message: 'Webhook endpoint already registered. Its secret is in the Stripe Dashboard.' };
+  } catch (error) {
+    logger.error({ err: error, mode }, 'stripe webhook setup failed');
+    return { ok: false, error: error instanceof Error ? error.message : 'Stripe rejected the request.' };
   }
 }
 

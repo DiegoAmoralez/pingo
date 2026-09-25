@@ -78,9 +78,10 @@ See `.env.example`. Important keys:
 | `TELEGRAM_BOT_TOKEN` | BotFather token |
 | `TELEGRAM_BOT_USERNAME` | Used for `t.me` deep links |
 | `TELEGRAM_WEBHOOK_SECRET` | Production webhook secret header |
-| `STRIPE_SECRET_KEY` | Stripe secret |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature |
-| `STRIPE_PRICE_PERSONAL` / `PRO` / `AGENCY` | Recurring price IDs |
+| `STRIPE_TEST_SECRET_KEY` / `STRIPE_TEST_WEBHOOK_SECRET` | Sandbox key set |
+| `STRIPE_LIVE_SECRET_KEY` / `STRIPE_LIVE_WEBHOOK_SECRET` | Live key set |
+| `STRIPE_DEFAULT_MODE` | `test` or `live` until an admin switches it (default: `test` when configured) |
+| `STRIPE_{TEST,LIVE}_PRICE_PERSONAL` / `PRO` / `AGENCY` | Optional price ID overrides (prices are normally found by lookup key) |
 | `RESEND_API_KEY` | Transactional email |
 | `EMAIL_FROM` | From address |
 | `SENTRY_DSN` | Optional error tracking |
@@ -180,39 +181,42 @@ instead of `X-Frame-Options: DENY`. If you use your own proxy, keep that excepti
 
 ## Stripe setup
 
-Local demo (test mode):
+PingoGo keeps **two Stripe key sets** — sandbox (`STRIPE_TEST_*`) and live (`STRIPE_LIVE_*`) — and an admin
+switches between them at `/admin` → Stripe without a redeploy. The active mode drives Checkout, the Customer
+Portal and plan limits. Subscriptions remember which world they came from (`Subscription.providerMode`), so a
+sandbox purchase grants nothing while live mode is on, and vice versa; nothing is deleted on switch.
 
-1. Create a Stripe account and copy a **test** secret key (`sk_test_...`) into `STRIPE_SECRET_KEY`.
-2. Create products and prices:
-
-```bash
-pnpm stripe:setup
-```
-
-3. Forward webhooks to the local app:
+Prices are resolved by **lookup key** (`pingo_personal_monthly`, `pingo_pro_monthly`, `pingo_agency_monthly`),
+so you never paste price IDs. The catalog (one product per plan, a monthly price each, the Customer Portal
+configuration) and the webhook endpoint are created with one click per mode from the admin panel, or:
 
 ```bash
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
+pnpm stripe:setup -- --mode test
+pnpm stripe:setup -- --mode live --webhook https://YOUR_DOMAIN/api/webhooks/stripe
 ```
 
-4. Put the printed `whsec_...` value into `STRIPE_WEBHOOK_SECRET` and restart `pnpm dev`.
-5. In the app: Settings → Billing → Upgrade. Test card: `4242 4242 4242 4242`, any future date, any CVC.
+Local demo (sandbox):
+
+1. Put a sandbox secret key (`sk_test_…`, or a restricted `rk_test_…`) into `STRIPE_TEST_SECRET_KEY`.
+2. `pnpm stripe:setup -- --mode test` creates products, prices and the portal configuration.
+3. Forward webhooks: `stripe listen --forward-to localhost:3000/api/webhooks/stripe` and copy the printed
+   `whsec_…` into `STRIPE_TEST_WEBHOOK_SECRET`; restart `pnpm dev`.
+4. Settings → Billing → pick a plan. Test card `4242 4242 4242 4242`, any future date, any CVC.
 
 Production:
 
-1. Use live keys and live Price IDs from `pnpm stripe:setup` run against `sk_live_...` (or create them in the Dashboard).
-2. Add a webhook endpoint: `https://YOUR_DOMAIN/api/webhooks/stripe`
-3. Subscribe at least to:
-   - `checkout.session.completed`
-   - `customer.subscription.created`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.payment_failed`
-4. Copy the webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
+1. Set `STRIPE_TEST_SECRET_KEY` and `STRIPE_LIVE_SECRET_KEY` (restricted keys need: Checkout Sessions, Customers,
+   Subscriptions, Prices, Products, Billing Portal, Webhook Endpoints — write).
+2. In `/admin` → Stripe, press **Create products & prices** and **Register webhook** for each mode. The webhook
+   signing secret is shown once — store it as `STRIPE_TEST_WEBHOOK_SECRET` / `STRIPE_LIVE_WEBHOOK_SECRET` and redeploy.
+   Both modes post to the same URL; the signature tells them apart.
+3. Test the whole flow in sandbox, then flip the toggle to **Live**.
 
-Plan codes are internal (`FREE`, `PERSONAL`, `PRO`, `AGENCY`). Stripe Price IDs are configuration, not business logic.
+Plan codes are internal (`FREE`, `PERSONAL`, `PRO`, `AGENCY`). Amounts come from `PLAN_PRICE_*`; re-running the
+catalog setup after changing them creates new prices and moves the lookup keys (old prices are archived).
 
-On downgrade, extra monitors are **paused**, not deleted. The user can choose which ones to activate within the new limit.
+Existing paid users change plans in the Customer Portal (prorated); a fresh Checkout is only used for the first
+purchase. On downgrade, extra monitors are **paused**, not deleted.
 
 ## Google and Facebook SSO
 
